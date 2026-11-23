@@ -1,0 +1,403 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolNombre {
+  ADMINISTRADOR
+  GESTION_HUMANA
+  ADMINISTRACION_PERSONAL
+  TESORERIA
+  CONTABILIDAD
+  CONSULTA
+}
+
+enum OrigenIncapacidad {
+  COMUN
+  LABORAL
+}
+
+enum TipoEntidad {
+  EPS
+  ARL
+}
+
+enum TipoIncapacidad {
+  INCAPACIDAD_TEMPORAL
+  LICENCIA_MATERNIDAD
+  LICENCIA_PATERNIDAD
+}
+
+enum EstadoIncapacidad {
+  REGISTRADA
+  TRANSCRITA
+  COBRADA
+  RECHAZADA
+  PAGADA
+}
+
+enum TipoDocumento {
+  CERTIFICADO
+  SOPORTE
+  RADICACION
+  CORRECCION
+  SOPORTE_PAGO
+  OTRO
+}
+
+enum UmbralAlerta {
+  DIAS_90
+  DIAS_120
+  DIAS_150
+  DIAS_180
+}
+
+enum EstadoCobro {
+  PENDIENTE
+  GESTIONADO
+  COMPROMISO_PAGO
+  COBRADO
+  RECHAZADO
+}
+
+enum EstadoConciliacion {
+  EN_CONSOLIDACION
+  EN_REVISION
+  VALIDADA
+}
+
+model Rol {
+  id            Int          @id @default(autoincrement())
+  nombre        RolNombre    @unique
+  descripcion   String?      @db.VarChar(255)
+  usuarios      Usuario[]
+  permisos      RolPermiso[]
+  creadoEn      DateTime     @default(now()) @map("creado_en")
+  actualizadoEn DateTime     @updatedAt @map("actualizado_en")
+
+  @@map("roles")
+}
+
+model Permiso {
+  id            Int          @id @default(autoincrement())
+  clave         String       @unique @db.VarChar(100)
+  descripcion   String?      @db.VarChar(255)
+  roles         RolPermiso[]
+  creadoEn      DateTime     @default(now()) @map("creado_en")
+  actualizadoEn DateTime     @updatedAt @map("actualizado_en")
+
+  @@map("permisos")
+}
+
+model RolPermiso {
+  rolId     Int      @map("rol_id")
+  permisoId Int      @map("permiso_id")
+  rol       Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso   Permiso  @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+  creadoEn  DateTime @default(now()) @map("creado_en")
+
+  @@id([rolId, permisoId])
+  @@map("roles_permisos")
+}
+
+model Usuario {
+  id                         Int                 @id @default(autoincrement())
+  nombre                     String              @db.VarChar(120)
+  correo                     String              @unique @db.VarChar(160)
+  passwordHash               String              @map("password_hash") @db.VarChar(255)
+  rolId                      Int                 @map("rol_id")
+  rol                        Rol                 @relation(fields: [rolId], references: [id], onDelete: Restrict)
+  activo                     Boolean             @default(true)
+  ultimoAcceso               DateTime?           @map("ultimo_acceso")
+  incapacidadesRegistradas   Incapacidad[]       @relation("IncapacidadRegistradaPor")
+  historiales                HistorialEstado[]
+  rechazos                   Rechazo[]
+  documentos                 Documento[]         @relation("DocumentoSubidoPor")
+  pagosRegistrados           Pago[]              @relation("PagoRegistradoPor")
+  gestionesCobro             GestionCobro[]
+  cobrosResponsables         Cobro[]             @relation("CobroResponsable")
+  conciliacionesConsolidadas Conciliacion[]      @relation("ConciliacionConsolidadaPor")
+  conciliacionesValidadas    Conciliacion[]      @relation("ConciliacionValidadaPor")
+  auditorias                 BitacoraAuditoria[]
+  creadoEn                   DateTime            @default(now()) @map("creado_en")
+  actualizadoEn              DateTime            @updatedAt @map("actualizado_en")
+
+  @@index([rolId])
+  @@map("usuarios")
+}
+
+model Empleado {
+  id             Int           @id @default(autoincrement())
+  identificacion String        @unique @db.VarChar(30)
+  nombres        String        @db.VarChar(120)
+  apellidos      String        @db.VarChar(120)
+  cargo          String        @db.VarChar(120)
+  area           String        @db.VarChar(120)
+  correo         String?       @db.VarChar(160)
+  telefono       String?       @db.VarChar(30)
+  activo         Boolean       @default(true)
+  incapacidades  Incapacidad[]
+  creadoEn       DateTime      @default(now()) @map("creado_en")
+  actualizadoEn  DateTime      @updatedAt @map("actualizado_en")
+
+  @@index([activo])
+  @@index([nombres, apellidos])
+  @@map("empleados")
+}
+
+model EntidadSalud {
+  id            Int           @id @default(autoincrement())
+  nit           String        @unique @db.VarChar(30)
+  nombre        String        @db.VarChar(180)
+  tipo          TipoEntidad
+  activa        Boolean       @default(true)
+  incapacidades Incapacidad[]
+  radicaciones  Radicacion[]
+  pagos         Pago[]
+  creadoEn      DateTime      @default(now()) @map("creado_en")
+  actualizadoEn DateTime      @updatedAt @map("actualizado_en")
+
+  @@index([tipo, activa])
+  @@map("entidades_salud")
+}
+
+model Incapacidad {
+  id              Int               @id @default(autoincrement())
+  codigo          String            @unique @db.VarChar(40)
+  empleadoId      Int               @map("empleado_id")
+  entidadId       Int               @map("entidad_id")
+  tipo            TipoIncapacidad   @map("tipo_incapacidad")
+  origen          OrigenIncapacidad
+  fechaInicio     DateTime          @map("fecha_inicio") @db.Date
+  fechaFin        DateTime          @map("fecha_fin") @db.Date
+  dias            Int               @db.SmallInt
+  fechaRecepcion  DateTime          @map("fecha_recepcion") @db.Date
+  observaciones   String?           @db.Text
+  estado          EstadoIncapacidad @default(REGISTRADA)
+  registradaPorId Int               @map("registrada_por_id")
+  empleado        Empleado          @relation(fields: [empleadoId], references: [id], onDelete: Restrict)
+  entidad         EntidadSalud      @relation(fields: [entidadId], references: [id], onDelete: Restrict)
+  registradaPor   Usuario           @relation("IncapacidadRegistradaPor", fields: [registradaPorId], references: [id], onDelete: Restrict)
+  documentos      Documento[]
+  radicaciones    Radicacion[]
+  historiales     HistorialEstado[]
+  rechazos        Rechazo[]
+  cobros          Cobro[]
+  alertas         Alerta[]
+  creadoEn        DateTime          @default(now()) @map("creado_en")
+  actualizadoEn   DateTime          @updatedAt @map("actualizado_en")
+
+  @@index([empleadoId])
+  @@index([entidadId])
+  @@index([estado])
+  @@index([fechaInicio, fechaFin])
+  @@index([fechaRecepcion])
+  @@index([estado, fechaRecepcion])
+  @@map("incapacidades")
+}
+
+model Documento {
+  id                 Int           @id @default(autoincrement())
+  incapacidadId      Int           @map("incapacidad_id")
+  rechazoId          Int?          @map("rechazo_id")
+  subidoPorId        Int           @map("subido_por_id")
+  nombreOriginal     String        @map("nombre_original") @db.VarChar(255)
+  rutaAlmacenamiento String        @unique @map("ruta_almacenamiento") @db.VarChar(500)
+  mimeType           String        @map("mime_type") @db.VarChar(120)
+  tamanoBytes        Int           @map("tamano_bytes")
+  tipo               TipoDocumento
+  incapacidad        Incapacidad   @relation(fields: [incapacidadId], references: [id], onDelete: Restrict)
+  rechazo            Rechazo?      @relation(fields: [rechazoId], references: [id], onDelete: SetNull)
+  subidoPor          Usuario       @relation("DocumentoSubidoPor", fields: [subidoPorId], references: [id], onDelete: Restrict)
+  pagoSoporte        Pago?
+  creadoEn           DateTime      @default(now()) @map("creado_en")
+
+  @@index([incapacidadId])
+  @@index([rechazoId])
+  @@index([tipo])
+  @@map("documentos")
+}
+
+model Radicacion {
+  id                 Int          @id @default(autoincrement())
+  incapacidadId      Int          @map("incapacidad_id")
+  entidadId          Int          @map("entidad_id")
+  fechaTranscripcion DateTime     @map("fecha_transcripcion") @db.Date
+  numeroRadicado     String       @map("numero_radicado") @db.VarChar(80)
+  fechaRadicacion    DateTime?    @map("fecha_radicacion") @db.Date
+  responsable        String       @db.VarChar(160)
+  observaciones      String?      @db.Text
+  incapacidad        Incapacidad  @relation(fields: [incapacidadId], references: [id], onDelete: Restrict)
+  entidad            EntidadSalud @relation(fields: [entidadId], references: [id], onDelete: Restrict)
+  rechazos           Rechazo[]
+  creadoEn           DateTime     @default(now()) @map("creado_en")
+  actualizadoEn      DateTime     @updatedAt @map("actualizado_en")
+
+  @@unique([entidadId, numeroRadicado])
+  @@index([incapacidadId])
+  @@map("radicaciones")
+}
+
+model HistorialEstado {
+  id             Int                @id @default(autoincrement())
+  incapacidadId  Int                @map("incapacidad_id")
+  estadoAnterior EstadoIncapacidad? @map("estado_anterior")
+  estadoNuevo    EstadoIncapacidad  @map("estado_nuevo")
+  usuarioId      Int                @map("usuario_id")
+  observaciones  String?            @db.Text
+  incapacidad    Incapacidad        @relation(fields: [incapacidadId], references: [id], onDelete: Restrict)
+  usuario        Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  fechaCambio    DateTime           @default(now()) @map("fecha_cambio")
+
+  @@index([incapacidadId, fechaCambio])
+  @@index([usuarioId])
+  @@map("historial_estados")
+}
+
+model Rechazo {
+  id                  Int         @id @default(autoincrement())
+  incapacidadId       Int         @map("incapacidad_id")
+  radicacionId        Int?        @map("radicacion_id")
+  causal              String      @db.Text
+  accionesCorrectivas String?     @map("acciones_correctivas") @db.Text
+  fechaRechazo        DateTime    @map("fecha_rechazo") @db.Date
+  registradoPorId     Int         @map("registrado_por_id")
+  incapacidad         Incapacidad @relation(fields: [incapacidadId], references: [id], onDelete: Restrict)
+  radicacion          Radicacion? @relation(fields: [radicacionId], references: [id], onDelete: SetNull)
+  registradoPor       Usuario     @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
+  documentos          Documento[]
+  creadoEn            DateTime    @default(now()) @map("creado_en")
+  actualizadoEn       DateTime    @updatedAt @map("actualizado_en")
+
+  @@index([incapacidadId])
+  @@index([radicacionId])
+  @@map("rechazos")
+}
+
+model Cobro {
+  id              Int            @id @default(autoincrement())
+  incapacidadId   Int            @map("incapacidad_id")
+  numeroSolicitud String         @unique @map("numero_solicitud") @db.VarChar(60)
+  fechaSolicitud  DateTime       @map("fecha_solicitud") @db.Date
+  valorReconocido Decimal        @map("valor_reconocido") @db.Decimal(14, 2)
+  estado          EstadoCobro    @default(PENDIENTE)
+  responsableId   Int?           @map("responsable_id")
+  observaciones   String?        @db.Text
+  incapacidad     Incapacidad    @relation(fields: [incapacidadId], references: [id], onDelete: Restrict)
+  responsable     Usuario?       @relation("CobroResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  pagos           Pago[]
+  gestiones       GestionCobro[]
+  creadoEn        DateTime       @default(now()) @map("creado_en")
+  actualizadoEn   DateTime       @updatedAt @map("actualizado_en")
+
+  @@index([incapacidadId])
+  @@index([estado])
+  @@map("cobros")
+}
+
+model GestionCobro {
+  id             Int       @id @default(autoincrement())
+  cobroId        Int       @map("cobro_id")
+  fechaGestion   DateTime  @map("fecha_gestion") @db.Date
+  compromisoPago DateTime? @map("compromiso_pago") @db.Date
+  observaciones  String?   @db.Text
+  usuarioId      Int       @map("usuario_id")
+  cobro          Cobro     @relation(fields: [cobroId], references: [id], onDelete: Restrict)
+  usuario        Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  creadoEn       DateTime  @default(now()) @map("creado_en")
+
+  @@index([cobroId, fechaGestion])
+  @@map("gestiones_cobro")
+}
+
+model Pago {
+  id                   Int                   @id @default(autoincrement())
+  cobroId              Int                   @map("cobro_id")
+  entidadId            Int                   @map("entidad_id")
+  fechaPago            DateTime              @map("fecha_pago") @db.Date
+  valorPagado          Decimal               @map("valor_pagado") @db.Decimal(14, 2)
+  referencia           String?               @db.VarChar(80)
+  soporteDocumentoId   Int?                  @unique @map("soporte_documento_id")
+  registradoPorId      Int                   @map("registrado_por_id")
+  cobro                Cobro                 @relation(fields: [cobroId], references: [id], onDelete: Restrict)
+  entidad              EntidadSalud          @relation(fields: [entidadId], references: [id], onDelete: Restrict)
+  soporteDocumento     Documento?            @relation(fields: [soporteDocumentoId], references: [id], onDelete: SetNull)
+  registradoPor        Usuario               @relation("PagoRegistradoPor", fields: [registradoPorId], references: [id], onDelete: Restrict)
+  detallesConciliacion DetalleConciliacion[]
+  creadoEn             DateTime              @default(now()) @map("creado_en")
+  actualizadoEn        DateTime              @updatedAt @map("actualizado_en")
+
+  @@index([cobroId])
+  @@index([entidadId])
+  @@index([fechaPago])
+  @@map("pagos")
+}
+
+model Conciliacion {
+  id               Int                   @id @default(autoincrement())
+  periodo          String                @unique @db.VarChar(20)
+  fechaInicio      DateTime              @map("fecha_inicio") @db.Date
+  fechaFin         DateTime              @map("fecha_fin") @db.Date
+  estado           EstadoConciliacion    @default(EN_CONSOLIDACION)
+  consolidadaPorId Int                   @map("consolidada_por_id")
+  validadaPorId    Int?                  @map("validada_por_id")
+  fechaValidacion  DateTime?             @map("fecha_validacion")
+  observaciones    String?               @db.Text
+  consolidadaPor   Usuario               @relation("ConciliacionConsolidadaPor", fields: [consolidadaPorId], references: [id], onDelete: Restrict)
+  validadaPor      Usuario?              @relation("ConciliacionValidadaPor", fields: [validadaPorId], references: [id], onDelete: SetNull)
+  detalles         DetalleConciliacion[]
+  creadoEn         DateTime              @default(now()) @map("creado_en")
+  actualizadoEn    DateTime              @updatedAt @map("actualizado_en")
+
+  @@index([estado])
+  @@map("conciliaciones")
+}
+
+model DetalleConciliacion {
+  id              Int          @id @default(autoincrement())
+  conciliacionId  Int          @map("conciliacion_id")
+  pagoId          Int          @map("pago_id")
+  valorConciliado Decimal      @map("valor_conciliado") @db.Decimal(14, 2)
+  diferencia      Decimal      @default("0") @db.Decimal(14, 2)
+  observaciones   String?      @db.Text
+  conciliacion    Conciliacion @relation(fields: [conciliacionId], references: [id], onDelete: Cascade)
+  pago            Pago         @relation(fields: [pagoId], references: [id], onDelete: Restrict)
+  creadoEn        DateTime     @default(now()) @map("creado_en")
+
+  @@unique([conciliacionId, pagoId])
+  @@map("detalles_conciliacion")
+}
+
+model Alerta {
+  id            Int          @id @default(autoincrement())
+  incapacidadId Int          @map("incapacidad_id")
+  umbral        UmbralAlerta
+  fechaGenerada DateTime     @default(now()) @map("fecha_generada")
+  leida         Boolean      @default(false)
+  incapacidad   Incapacidad  @relation(fields: [incapacidadId], references: [id], onDelete: Cascade)
+
+  @@unique([incapacidadId, umbral])
+  @@index([leida])
+  @@map("alertas")
+}
+
+model BitacoraAuditoria {
+  id          Int      @id @default(autoincrement())
+  usuarioId   Int?     @map("usuario_id")
+  accion      String   @db.VarChar(80)
+  entidad     String   @db.VarChar(80)
+  entidadId   Int?     @map("entidad_id")
+  detalles    Json?
+  direccionIp String?  @map("direccion_ip") @db.VarChar(45)
+  usuario     Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  creadoEn    DateTime @default(now()) @map("creado_en")
+
+  @@index([entidad, entidadId])
+  @@index([usuarioId])
+  @@index([creadoEn])
+  @@map("bitacora_auditoria")
+}

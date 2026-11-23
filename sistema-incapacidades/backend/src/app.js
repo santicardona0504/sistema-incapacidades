@@ -1,0 +1,44 @@
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import morgan from 'morgan';
+import { env } from './config/env.js';
+import { healthRoutes } from './modules/health/health.routes.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { rolesRoutes } from './modules/roles/roles.routes.js';
+import { usuarioRoutes } from './modules/usuarios/usuario.routes.js';
+import { empleadoRoutes } from './modules/empleados/empleado.routes.js';
+import { incapacidadRoutes } from './modules/incapacidades/incapacidad.routes.js';
+import { radicacionRoutes } from './modules/radicaciones/radicacion.routes.js';
+import { historialRoutes } from './modules/historial/historial.routes.js';
+import { documentoRoutes } from './modules/documentos/documento.routes.js';
+import { entidadRoutes } from './modules/entidades/entidad.routes.js';
+import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js';
+
+export const app = express();
+
+app.disable('x-powered-by');
+app.use(helmet());
+app.use(cors({
+  origin: env.CORS_ORIGIN,
+  credentials: true
+}));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+
+app.use('/api', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api', rolesRoutes);
+app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/empleados', empleadoRoutes);
+app.use('/api/incapacidades', incapacidadRoutes);
+app.use('/api/radicaciones', radicacionRoutes);
+app.use('/api/historial', historialRoutes);
+app.use('/api/documentos', documentoRoutes);
+app.use('/api/entidades', entidadRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
