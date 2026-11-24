@@ -3,7 +3,9 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
+import { failure } from './utils/api-response.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { rolesRoutes } from './modules/roles/roles.routes.js';
@@ -36,6 +38,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 1000,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (req, res) => failure(res, 429, 'Demasiadas solicitudes. Intenta nuevamente más tarde.')
+});
+
+app.use('/api', apiLimiter);
 app.use('/api', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', rolesRoutes);

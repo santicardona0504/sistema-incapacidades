@@ -1,6 +1,6 @@
 import { AppError, success } from '../../utils/api-response.js';
 import { crearDocumentoSchema } from './documento.validation.js';
-import { eliminarArchivo } from './documento.storage.js';
+import { eliminarArchivo, validarFirmaArchivo } from './documento.storage.js';
 import {
   listarDocumentos,
   obtenerDocumento,
@@ -42,6 +42,8 @@ export async function crear(req, res, next) {
     if (!req.file) {
       throw new AppError(400, 'Debe adjuntar un archivo en el campo "archivo"');
     }
+
+    await validarFirmaArchivo(req.file);
 
     const documento = await crearDocumento(
       resultado.data.params.incapacidadId,

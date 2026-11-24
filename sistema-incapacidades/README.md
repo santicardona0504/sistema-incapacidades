@@ -4,9 +4,16 @@ Proyecto académico Full Stack para registrar y seguir incapacidades médicas y 
 
 ## Estado actual
 
-**Etapa 3 completada:** registro y seguimiento de incapacidades, transcripción y radicación, rechazos con correcciones, historial inmutable de estados, entidades EPS/ARL y documentos privados con descarga autorizada.
+**Etapas 1 a 6 completadas.**
 
-Las siguientes etapas agregarán cobros, pagos, conciliación, alertas, reportes CSV y el frontend React.
+- Etapa 1: base de datos PostgreSQL, Prisma, autenticación JWT y RBAC.
+- Etapa 2: usuarios, roles, permisos, empleados y entidades EPS/ARL.
+- Etapa 3: incapacidades, radicaciones, rechazos, documentos e historial de estados.
+- Etapa 4: cobros vinculados a radicación, pagos parciales, conciliaciones, alertas, reportes CSV, dashboard y auditoría.
+- Etapa 5: frontend React/Vite con autenticación, guards por permiso, dashboard con Recharts y pantallas para todos los módulos.
+- Etapa 6: pruebas `node:test` + `fetch`, endurecimiento de seguridad, documentación y verificación final.
+
+El sistema funciona de extremo a extremo con datos ficticios idempotentes y el frontend se comunica con la API mediante cookies `httpOnly`.
 
 ## Requisitos previos
 
@@ -21,27 +28,35 @@ Las siguientes etapas agregarán cobros, pagos, conciliación, alertas, reportes
 ```text
 sistema-incapacidades/
   frontend/
+    src/
+      api/           # cliente Axios y manejo de errores
+      components/    # layout y componentes comunes
+      context/       # autenticación y notificaciones
+      guards/        # sesión y permisos
+      pages/         # dashboard y pantallas por módulo
+      services/      # servicios REST por dominio
+      utils/         # formato, constantes y query params
+    index.html
+    vite.config.js
+    package.json
   backend/
     prisma/
       schema.prisma
       migrations/
       seed.js
+      seed-datos-prueba.js
     src/
       config/
       modules/
-        auth/
-        usuarios/
-        roles/
-        empleados/
-        incapacidades/
-        radicaciones/
-        documentos/
-        historial/
-        entidades/
-        auditoria/
-        health/
+        auth/ roles/ usuarios/ empleados/ entidades/
+        incapacidades/ radicaciones/ documentos/ historial/
+        cobros/ pagos/ conciliaciones/ alertas/
+        reportes/ dashboard/ auditoria/ health/
       middlewares/
       utils/
+    tests/
+      utils.test.js
+      api.integration.test.js
     storage/
       documentos/
     .env.example
@@ -71,6 +86,7 @@ erDiagram
     INCAPACIDAD ||--o{ COBRO : genera
     INCAPACIDAD ||--o{ ALERTA : produce
 
+    RADICACION ||--o{ COBRO : vincula
     RADICACION ||--o{ RECHAZO : motiva
     RECHAZO ||--o{ DOCUMENTO : soporta
     COBRO ||--o{ GESTION_COBRO : seguimiento_semanal
@@ -86,9 +102,10 @@ Relaciones principales:
 - Un `Rol` tiene muchos `Usuario` y muchos `Permiso` a través de `RolPermiso`.
 - Un `Empleado` tiene muchas `Incapacidad`; una `Incapacidad` pertenece a una EPS o ARL.
 - Cada `Incapacidad` acumula documentos, radicaciones, rechazos, cobros, alertas e historial de estados; el historial nunca se sobrescribe.
-- Un `Cobro` puede tener varias gestiones de seguimiento y varios pagos parciales.
-- Una `Conciliacion` agrupa pagos mediante `DetalleConciliacion`.
-- `Alerta` tiene unicidad por `(incapacidad, umbral)` para no duplicar avisos de 90/120/150/180 días.
+- Un `Cobro` pertenece a una `Incapacidad` y se vincula explícitamente a una sola `Radicacion` mediante `radicacion_id` (obligatoria, `ON DELETE RESTRICT`). No se asume automáticamente la radicación más reciente.
+- Un `Cobro` puede tener varias gestiones de seguimiento y varios pagos parciales. El saldo se calcula como `valorReconocido - suma(pagos)`.
+- Una `Conciliacion` agrupa pagos mediante `DetalleConciliacion`, con unicidad por conciliación y pago.
+- `Alerta` tiene unicidad por `(incapacidad, umbral)` para no duplicar avisos de 90/120/150/180 días, calculados desde `fechaInicio`.
 - `BitacoraAuditoria` registra operaciones importantes con usuario, entidad afectada y datos en JSON.
 
 Decisiones acordadas:
@@ -96,11 +113,15 @@ Decisiones acordadas:
 - Estado inicial: `REGISTRADA`.
 - Flujo: `REGISTRADA → TRANSCRITA → COBRADA → PAGADA`.
 - Un rechazo permite corregir y generar una nueva transcripción; el historial conserva todos los cambios.
-- La transición a `TRANSCRITA` solo se produce al crear una radicación; `PAGADA` queda reservada para el módulo de pagos de una etapa posterior.
+- La transición a `TRANSCRITA` solo se produce al crear una radicación; `COBRADA` se alcanza al crear un cobro y `PAGADA` cuando el saldo del cobro queda en cero.
+- Todo cobro exige una radicación existente y perteneciente a la misma incapacidad. La UI permite elegir explícitamente entre las radicaciones de la incapacidad; no se selecciona automáticamente la más reciente.
+- Los pagos son parciales o totales; se rechaza un pago mayor al saldo pendiente y se impide duplicar el mismo soporte de pago.
+- Las conciliaciones se muestran como `Pendiente de revisión` (`EN_REVISION`), `Conciliada` (`VALIDADA` sin diferencias) o `Con diferencias` (`VALIDADA` con diferencias).
+- Las alertas se calculan por días transcurridos desde `fechaInicio` de cada incapacidad: 90, 120, 150 y 180 días; no se acumulan días entre empleados.
 - Autenticación implementada: JWT en cookie `httpOnly` con contraseñas `bcrypt`.
-- Seed de prueba ficticio implementado y ejecutable con `npm run seed`.
-- Documentos privados: PDF/JPG/PNG hasta `MAX_FILE_SIZE_MB`, guardados en `backend/storage/documentos` y servidos solo por endpoints autorizados.
-- Reportes en CSV compatible con Excel.
+- Seeds ficticios idempotentes: `npm run seed` (catálogos base) y `npm run seed:demo` (datos operativos de las etapas 3 y 4).
+- Documentos privados: PDF/JPG/PNG hasta `MAX_FILE_SIZE_MB`, guardados con nombre UUID en `backend/storage/documentos`, validados por firma real del archivo y servidos solo por endpoints autorizados.
+- Reportes en CSV compatible con Excel (BOM UTF-8), también disponibles en JSON.
 
 ## Configuración
 
@@ -173,7 +194,7 @@ npx prisma migrate dev --name init
 npx prisma generate
 ```
 
-`migrate dev` crea la base de datos, aplica `prisma/migrations/<timestamp>_init` y genera el cliente de Prisma.
+`migrate dev` crea la base de datos, aplica todas las migraciones versionadas (inicial y `add_cobro_radicacion`) y genera el cliente de Prisma. En una copia ya migrada usa `npx prisma migrate status` para confirmar que no hay cambios pendientes.
 
 ### 5. Cargar datos ficticios de prueba
 
@@ -182,6 +203,12 @@ npm run seed
 ```
 
 El seed es idempotente: crea o actualiza 6 roles, 31 permisos, 6 usuarios, 3 entidades EPS/ARL y 6 empleados ficticios.
+
+Para cargar además datos operativos de incapacidades, radicaciones, cobros, pagos, conciliaciones y alertas:
+
+```powershell
+npm run seed:demo
+```
 
 ### 6. Iniciar el backend
 
@@ -195,9 +222,27 @@ Deberías ver:
 Backend escuchando en http://localhost:4000
 ```
 
-## Prueba rápida de la Etapa 1
+### 7. Instalar y ejecutar el frontend
 
-Abre `http://localhost:4000/api/health` o ejecuta:
+En otra terminal, desde `sistema-incapacidades/`:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Vite queda disponible en `http://localhost:5173` y redirige `/api` al backend en `http://localhost:4000` mediante `frontend/vite.config.js`. Para generar la versión de producción:
+
+```powershell
+npm run build
+```
+
+El resultado se escribe en `frontend/dist`.
+
+## Verificación rápida
+
+Abre `http://localhost:5173` e inicia sesión con `admin@incapacidades.test` / `Demo1234!`. Para comprobar solo la API, abre `http://localhost:4000/api/health` o ejecuta:
 
 ```powershell
 curl http://localhost:4000/api/health
@@ -329,6 +374,122 @@ La carga de documentos usa `multipart/form-data` con el campo `archivo` y el cam
 
 Transiciones válidas: `REGISTRADA → TRANSCRITA → COBRADA → PAGADA` y `TRANSCRITA|COBRADA → RECHAZADA → TRANSCRITA`. Cualquier otro cambio responde `400`.
 
+## API de la Etapa 4
+
+Todas las rutas requieren autenticación y el permiso indicado. Los listados devuelven `{ datos, total, pagina, limite, totalPaginas }` dentro de `data`.
+
+### Cobros y pagos
+
+| Método | Ruta | Permiso requerido |
+| --- | --- | --- |
+| GET | `/api/cobros/incapacidad/:incapacidadId/radicaciones` | `COBROS_VER` |
+| GET | `/api/cobros/pendientes` | `COBROS_VER` |
+| GET | `/api/cobros` | `COBROS_VER` |
+| POST | `/api/cobros` | `COBROS_CREAR` |
+| GET | `/api/cobros/:id/gestiones` | `COBROS_VER` |
+| POST | `/api/cobros/:id/gestiones` | `COBROS_CREAR` |
+| GET | `/api/cobros/:id` | `COBROS_VER` |
+| PATCH | `/api/cobros/:id` | `COBROS_CREAR` |
+| GET | `/api/pagos/pendientes` | `PAGOS_VER` |
+| GET | `/api/pagos` | `PAGOS_VER` |
+| POST | `/api/pagos` | `PAGOS_CREAR` |
+| PATCH | `/api/pagos/:id/soporte` | `PAGOS_CREAR` |
+| GET | `/api/pagos/:id` | `PAGOS_VER` |
+
+Ejemplo de cobro; `radicacionId` es obligatorio y debe pertenecer a `incapacidadId`:
+
+```json
+{
+  "incapacidadId": 8,
+  "radicacionId": 12,
+  "fechaSolicitud": "2026-01-15",
+  "valorReconocido": 500000,
+  "observaciones": "Cobro vinculado a la radicación revisada"
+}
+```
+
+Ejemplo de pago parcial:
+
+```json
+{
+  "cobroId": 4,
+  "fechaPago": "2026-02-10",
+  "valor": 300000,
+  "metodoPago": "TRANSFERENCIA",
+  "referencia": "TR-2026-001",
+  "observaciones": "Abono inicial"
+}
+```
+
+Si el valor supera el saldo, la respuesta es `400`. Si el soporte ya está registrado en otro pago, la respuesta es `409`. Cuando el saldo llega a cero, la incapacidad pasa a `PAGADA`.
+
+### Conciliaciones, alertas, reportes, dashboard y auditoría
+
+| Método | Ruta | Permiso requerido |
+| --- | --- | --- |
+| GET | `/api/conciliaciones` | `CONCILIACIONES_VER` |
+| POST | `/api/conciliaciones` | `CONCILIACIONES_CONSOLIDAR` |
+| GET | `/api/conciliaciones/:id/historial` | `CONCILIACIONES_VER` |
+| POST | `/api/conciliaciones/:id/detalles` | `CONCILIACIONES_CONSOLIDAR` |
+| DELETE | `/api/conciliaciones/:id/detalles/:pagoId` | `CONCILIACIONES_CONSOLIDAR` |
+| PATCH | `/api/conciliaciones/:id/validar` | `CONCILIACIONES_VALIDAR` |
+| GET | `/api/conciliaciones/:id` | `CONCILIACIONES_VER` |
+| GET | `/api/alertas/resumen` | `ALERTAS_VER` |
+| GET | `/api/alertas` | `ALERTAS_VER` |
+| POST | `/api/alertas/generar` | `ALERTAS_VER` |
+| PATCH | `/api/alertas/leidas` | `ALERTAS_VER` |
+| PATCH | `/api/alertas/:id/leida` | `ALERTAS_VER` |
+| GET | `/api/reportes/tipos` | `REPORTES_VER` |
+| GET | `/api/reportes/:tipo?formato=csv\|json` | `REPORTES_VER` |
+| GET | `/api/dashboard/resumen` | `INCAPACIDADES_VER` |
+| GET | `/api/dashboard/graficas` | `INCAPACIDADES_VER` |
+| GET | `/api/dashboard/ultimos-registros` | `INCAPACIDADES_VER` |
+| GET | `/api/auditoria` | `AUDITORIA_VER` |
+
+Tipos de reporte disponibles: `incapacidades`, `cobros-pendientes`, `pagos-realizados`, `pagos-pendientes`, `rechazadas`, `prolongadas` y `conciliaciones`. El formato `csv` agrega BOM UTF-8 para Excel y cabeceras `Content-Disposition: attachment`.
+
+La generación de alertas es idempotente: repetir `POST /api/alertas/generar` no duplica avisos para la misma incapacidad y umbral.
+
+## Frontend de la Etapa 5
+
+Tecnologías: React 19, Vite 7, React Router 7, Axios, Bootstrap 5 y Recharts. No se usa TypeScript.
+
+- `src/api/client.js`: base URL relativa `/api`, `withCredentials: true`, interceptor de errores y helper `mensajeError`.
+- `src/context/AuthContext.jsx`: sesión en memoria, `/api/auth/me`, permisos y helper `tienePermiso`.
+- `src/context/ToastContext.jsx`: notificaciones de éxito/error.
+- `src/guards/RutaPrivada.jsx` y `src/guards/Permiso.jsx`: bloquean rutas y acciones según sesión/permiso.
+- `src/components/common/ManagePage.jsx`: base reutilizable de listados con búsqueda, filtros, paginación, modales y acciones por permiso.
+- `src/components/layout/Layout.jsx`, `Sidebar.jsx` y `Topbar.jsx`: navegación adaptable al rol.
+- `src/pages`: dashboard con gráficas Recharts y pantallas de empleados, incapacidades, radicaciones, documentos, historial, cobros, pagos, conciliaciones, alertas, reportes, auditoría, usuarios, roles/permisos y 404.
+- `src/utils`: formato de moneda/fechas, constantes y construcción de query params.
+
+Rutas principales: `/login`, `/dashboard`, `/empleados`, `/incapacidades`, `/radicaciones`, `/documentos`, `/historial`, `/cobros`, `/pagos`, `/conciliaciones`, `/alertas`, `/reportes`, `/auditoria`, `/usuarios`, `/roles-permisos` y `*`.
+
+El frontend no guarda tokens en `localStorage`/`sessionStorage`; usa la cookie `httpOnly` de la API. El proxy de Vite solo existe para desarrollo; en producción el servidor web debe publicar `frontend/dist` y redirigir `/api` al backend.
+
+## Pruebas y seguridad de la Etapa 6
+
+Ejecutar desde `backend/`:
+
+```powershell
+npm test
+```
+
+La suite usa `node:test` y `fetch` contra el servidor en `http://localhost:4000` con la base de datos disponible. Cubre health, login, RBAC, validación Zod, listados paginados de todas las etapas, reportes CSV con BOM, rechazo de archivos con firma falsificada, regla cobro-radicación, límite de pago por saldo y utilidades de dinero/CSV.
+
+Resultado verificado: **16 pruebas, 16 aprobadas, 0 fallidas** (no requiere http-server ni supertest).
+
+Medidas de seguridad verificadas:
+
+- Helmet, CORS restringido a `CORS_ORIGIN`, `x-powered-by` desactivado.
+- Rate limit global de 1000 solicitudes por IP cada 15 minutos, más límite estricto de 10 intentos de login por 15 minutos.
+- JWT en cookie `httpOnly`, `sameSite=lax`, `secure` en producción; bcryptjs con 12 rondas.
+- RBAC con `requireAuth` y `requirePermission` en rutas sensibles; auditoría y reportes son permisos distintos.
+- Zod valida params, query y body; errores 5xx no exponen stack al cliente.
+- Documentos con MIME permitido, límite de tamaño, nombre UUID, validación de firma real PDF/JPG/PNG, prevención de path traversal y descarga autorizada.
+- Prisma usa consultas parametrizadas; no hay SQL crudo construido con entrada del usuario.
+- Sin secretos reales versionados: `.env` está ignorado y los datos demo son ficticios.
+
 ## Respuestas de la API
 
 Todas las respuestas usan esta forma:
@@ -349,7 +510,7 @@ En caso de error:
 - Node y React se ejecutan en la máquina host; Docker se usa únicamente para PostgreSQL.
 - Los documentos se guardan en `backend/storage/documentos`, fuera de `frontend/public`, y se descargan por un endpoint autorizado. Esa carpeta está ignorada por Git.
 - Las migraciones se versionan en Git; los archivos `.env` no se versionan.
-- `npm audit` reporta 6 avisos (2 moderados y 4 altos) originados en dependencias de desarrollo: CLI de Prisma 6 y `nodemon`/`minimatch`. No están en las dependencias de ejecución de la API; Zod se actualizó a `4.6.7`. No se aplicó `npm audit fix --force` porque instalaría Prisma 7, cuyo generador principal produce archivos TypeScript y este proyecto debe permanecer en JavaScript.
+- `npm audit` en backend reporta 6 avisos (2 moderados y 4 altos) originados en dependencias de desarrollo: CLI de Prisma 6 y `nodemon`/`minimatch`. No están en las dependencias de ejecución de la API; Zod se actualizó a `4.6.7`. No se aplicó `npm audit fix --force` porque instalaría Prisma 7, cuyo generador principal produce archivos TypeScript y este proyecto debe permanecer en JavaScript. `npm install` en frontend terminó con 0 vulnerabilidades.
 - La CLI de Prisma solo debe ejecutarse con el esquema local de confianza; no se procesan esquemas enviados por usuarios.
 - Las contraseñas se cifran con `bcryptjs` (12 rondas) y nunca se devuelven en las respuestas.
 - La cookie de sesión es `httpOnly` y `sameSite=lax`; en producción se envía con `secure`.
