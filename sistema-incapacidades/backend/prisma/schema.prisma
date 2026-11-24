@@ -236,6 +236,7 @@ model Radicacion {
   rechazos           Rechazo[]
   creadoEn           DateTime     @default(now()) @map("creado_en")
   actualizadoEn      DateTime     @updatedAt @map("actualizado_en")
+  cobros             Cobro[]
 
   @@unique([entidadId, numeroRadicado])
   @@index([incapacidadId])
@@ -281,6 +282,7 @@ model Rechazo {
 model Cobro {
   id              Int            @id @default(autoincrement())
   incapacidadId   Int            @map("incapacidad_id")
+  radicacionId    Int            @map("radicacion_id")
   numeroSolicitud String         @unique @map("numero_solicitud") @db.VarChar(60)
   fechaSolicitud  DateTime       @map("fecha_solicitud") @db.Date
   valorReconocido Decimal        @map("valor_reconocido") @db.Decimal(14, 2)
@@ -288,6 +290,7 @@ model Cobro {
   responsableId   Int?           @map("responsable_id")
   observaciones   String?        @db.Text
   incapacidad     Incapacidad    @relation(fields: [incapacidadId], references: [id], onDelete: Restrict)
+  radicacion      Radicacion     @relation(fields: [radicacionId], references: [id], onDelete: Restrict)
   responsable     Usuario?       @relation("CobroResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
   pagos           Pago[]
   gestiones       GestionCobro[]
@@ -295,6 +298,7 @@ model Cobro {
   actualizadoEn   DateTime       @updatedAt @map("actualizado_en")
 
   @@index([incapacidadId])
+  @@index([radicacionId])
   @@index([estado])
   @@map("cobros")
 }

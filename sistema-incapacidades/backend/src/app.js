@@ -14,6 +14,13 @@ import { radicacionRoutes } from './modules/radicaciones/radicacion.routes.js';
 import { historialRoutes } from './modules/historial/historial.routes.js';
 import { documentoRoutes } from './modules/documentos/documento.routes.js';
 import { entidadRoutes } from './modules/entidades/entidad.routes.js';
+import { cobroRoutes } from './modules/cobros/cobro.routes.js';
+import { pagoRoutes } from './modules/pagos/pago.routes.js';
+import { conciliacionRoutes } from './modules/conciliaciones/conciliacion.routes.js';
+import { alertaRoutes } from './modules/alertas/alerta.routes.js';
+import { reporteRoutes } from './modules/reportes/reporte.routes.js';
+import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
+import { auditoriaRoutes } from './modules/auditoria/auditoria.routes.js';
 import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js';
 
 export const app = express();
@@ -39,6 +46,13 @@ app.use('/api/radicaciones', radicacionRoutes);
 app.use('/api/historial', historialRoutes);
 app.use('/api/documentos', documentoRoutes);
 app.use('/api/entidades', entidadRoutes);
+app.use('/api/cobros', cobroRoutes);
+app.use('/api/pagos', pagoRoutes);
+app.use('/api/conciliaciones', conciliacionRoutes);
+app.use('/api/alertas', alertaRoutes);
+app.use('/api/reportes', reporteRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/auditoria', auditoriaRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
