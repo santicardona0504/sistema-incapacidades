@@ -2,7 +2,7 @@ import { api } from '../api/client.js';
 import { buildQuery } from '../utils/query.js';
 
 export const documentoService = {
-  listar: (filtros) => api.get(`/documentos${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/documentos${buildQuery(filtros)}`, opciones),
   obtener: (id) => api.get(`/documentos/${id}`),
   subir: (incapacidadId, formData) => api.post(`/documentos/incapacidad/${incapacidadId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -23,5 +23,5 @@ export const documentoService = {
 };
 
 export const historialService = {
-  listar: (filtros) => api.get(`/historial${buildQuery(filtros)}`)
+  listar: (filtros, opciones) => api.get(`/historial${buildQuery(filtros)}`, opciones)
 };

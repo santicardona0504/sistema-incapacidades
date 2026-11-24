@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { mensajeError } from '../../api/client.js';
+import { esCancelado, mensajeError } from '../../api/client.js';
 import { FilterBar } from './FilterBar.jsx';
 import { DataTable } from './DataTable.jsx';
 import { PageHeader } from './PageHeader.jsx';
@@ -50,6 +50,7 @@ export function ManagePage({
   const [guardando, setGuardando] = useState(false);
   const [errorFormulario, setErrorFormulario] = useState(null);
   const [confirmacion, setConfirmacion] = useState(null);
+  const controladorRef = useRef(null);
 
   const puedeVer = tienePermiso(permisoVer);
   const puedeCrear = tienePermiso(permisoCrear);
@@ -58,19 +59,26 @@ export function ManagePage({
 
   const cargar = useCallback(async () => {
     if (!puedeVer) return;
+    controladorRef.current?.abort();
+    const controlador = new AbortController();
+    controladorRef.current = controlador;
+
     setCargando(true);
     setError(null);
     try {
-      const respuesta = await servicio.listar({ ...filtros, pagina });
-      setDatos(respuesta.data);
+      const respuesta = await servicio.listar({ ...filtros, pagina }, { signal: controlador.signal });
+      if (!controlador.signal.aborted) setDatos(respuesta.data);
     } catch (fallo) {
-      setError(mensajeError(fallo));
+      if (!esCancelado(fallo) && !controlador.signal.aborted) setError(mensajeError(fallo));
     } finally {
-      setCargando(false);
+      if (!controlador.signal.aborted) setCargando(false);
     }
   }, [puedeVer, servicio, filtros, pagina]);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    cargar();
+    return () => controladorRef.current?.abort();
+  }, [cargar]);
 
   const filas = datos?.[coleccion] ?? [];
 

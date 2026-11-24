@@ -2,7 +2,7 @@ import { api } from '../api/client.js';
 import { buildQuery } from '../utils/query.js';
 
 export const conciliacionService = {
-  listar: (filtros) => api.get(`/conciliaciones${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/conciliaciones${buildQuery(filtros)}`, opciones),
   obtener: (id) => api.get(`/conciliaciones/${id}`),
   crear: (datos) => api.post('/conciliaciones', datos),
   agregarPago: (id, datos) => api.post(`/conciliaciones/${id}/detalles`, datos),
@@ -12,7 +12,7 @@ export const conciliacionService = {
 };
 
 export const alertaService = {
-  listar: (filtros) => api.get(`/alertas${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/alertas${buildQuery(filtros)}`, opciones),
   resumen: () => api.get('/alertas/resumen'),
   generar: () => api.post('/alertas/generar', {}),
   marcarLeida: (id) => api.patch(`/alertas/${id}/leida`, {}),
@@ -20,7 +20,7 @@ export const alertaService = {
 };
 
 export const reporteService = {
-  tipos: () => api.get('/reportes/tipos'),
+  tipos: (opciones) => api.get('/reportes/tipos', opciones),
   exportarUrl: (tipo, filtros) => `/api/reportes/${tipo}?formato=csv${buildQuery(filtros).replace('?', '&')}`,
   descargar: async (tipo, filtros, nombre) => {
     const url = reporteService.exportarUrl(tipo, filtros);
@@ -39,15 +39,15 @@ export const reporteService = {
     enlace.remove();
     URL.revokeObjectURL(enlace.href);
   },
-  consultar: (tipo, filtros) => api.get(`/reportes/${tipo}${buildQuery({ ...filtros, formato: 'json' })}`)
+  consultar: (tipo, filtros, opciones) => api.get(`/reportes/${tipo}${buildQuery({ ...filtros, formato: 'json' })}`, opciones)
 };
 
 export const dashboardService = {
-  resumen: () => api.get('/dashboard/resumen'),
-  graficas: () => api.get('/dashboard/graficas'),
-  ultimos: () => api.get('/dashboard/ultimos-registros')
+  resumen: (opciones) => api.get('/dashboard/resumen', opciones),
+  graficas: (opciones) => api.get('/dashboard/graficas', opciones),
+  ultimos: (opciones) => api.get('/dashboard/ultimos-registros', opciones)
 };
 
 export const auditoriaService = {
-  listar: (filtros) => api.get(`/auditoria${buildQuery(filtros)}`)
+  listar: (filtros, opciones) => api.get(`/auditoria${buildQuery(filtros)}`, opciones)
 };

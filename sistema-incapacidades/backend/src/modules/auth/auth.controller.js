@@ -1,7 +1,8 @@
 import { env } from '../../config/env.js';
 import { success } from '../../utils/api-response.js';
 import { firmarToken, opcionesCookie } from '../../utils/token.js';
-import { autenticar, obtenerPerfil, registrarSalida } from './auth.service.js';
+import { autenticar, registrarSalida } from './auth.service.js';
+import { toUsuarioDto } from '../usuarios/usuario.dto.js';
 
 export async function login(req, res, next) {
   try {
@@ -18,7 +19,7 @@ export async function login(req, res, next) {
 
 export async function me(req, res, next) {
   try {
-    const usuario = await obtenerPerfil(req.usuario.id);
+    const usuario = toUsuarioDto(req.usuario);
     return success(res, { usuario }, 'Perfil obtenido');
   } catch (error) {
     return next(error);

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { reporteService } from '../../services/gestion.service.js';
-import { mensajeError } from '../../api/client.js';
+import { esCancelado, mensajeError } from '../../api/client.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { AccesoDenegado } from '../../components/common/ManagePage.jsx';
@@ -37,23 +37,40 @@ export function ReportesPage() {
   const [reporte, setReporte] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
+  const controladorTiposRef = useRef(null);
+  const controladorConsultaRef = useRef(null);
 
   useEffect(() => {
-    reporteService.tipos().then((respuesta) => setTipos(respuesta.data ?? [])).catch((fallo) => setError(mensajeError(fallo)));
+    const controlador = new AbortController();
+    controladorTiposRef.current = controlador;
+    reporteService.tipos({ signal: controlador.signal })
+      .then((respuesta) => {
+        if (!controlador.signal.aborted) setTipos(respuesta.data ?? []);
+      })
+      .catch((fallo) => {
+        if (!esCancelado(fallo) && !controlador.signal.aborted) setError(mensajeError(fallo));
+      });
+    return () => controlador.abort();
   }, []);
 
   const consultar = async (filtrosEfectivos = filtros) => {
+    controladorConsultaRef.current?.abort();
+    const controlador = new AbortController();
+    controladorConsultaRef.current = controlador;
+
     setCargando(true);
     setError(null);
     try {
-      const respuesta = await reporteService.consultar(tipo, filtrosEfectivos);
-      setReporte(respuesta.data);
+      const respuesta = await reporteService.consultar(tipo, filtrosEfectivos, { signal: controlador.signal });
+      if (!controlador.signal.aborted) setReporte(respuesta.data);
     } catch (fallo) {
-      setError(mensajeError(fallo));
+      if (!esCancelado(fallo) && !controlador.signal.aborted) setError(mensajeError(fallo));
     } finally {
-      setCargando(false);
+      if (!controlador.signal.aborted) setCargando(false);
     }
   };
+
+  useEffect(() => () => controladorConsultaRef.current?.abort(), []);
 
   const exportar = async () => {
     try {
@@ -151,7 +168,7 @@ export function ReportesPage() {
         </div>
         <div className="card-body p-0">
           {error ? (
-            <div className="p-3"><ErrorState mensaje={error} onReintentar={consultar} /></div>
+            <div className="p-3"><ErrorState mensaje={error} onReintentar={() => consultar()} /></div>
           ) : (
             <DataTable
               columnas={columnas}

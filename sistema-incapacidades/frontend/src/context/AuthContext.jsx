@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { authService } from '../services/auth.service.js';
+import { esCancelado } from '../api/client.js';
 
 const AuthContext = createContext(null);
 
@@ -8,20 +9,20 @@ export function AuthProvider({ children }) {
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    let activo = true;
+    const controlador = new AbortController();
 
-    authService.me()
+    authService.me({ signal: controlador.signal })
       .then((respuesta) => {
-        if (activo) setUsuario(respuesta.data.usuario ?? null);
+        if (!controlador.signal.aborted) setUsuario(respuesta.data.usuario ?? null);
       })
-      .catch(() => {
-        if (activo) setUsuario(null);
+      .catch((fallo) => {
+        if (!esCancelado(fallo) && !controlador.signal.aborted) setUsuario(null);
       })
       .finally(() => {
-        if (activo) setCargando(false);
+        if (!controlador.signal.aborted) setCargando(false);
       });
 
-    return () => { activo = false; };
+    return () => controlador.abort();
   }, []);
 
   const login = useCallback(async (credenciales) => {

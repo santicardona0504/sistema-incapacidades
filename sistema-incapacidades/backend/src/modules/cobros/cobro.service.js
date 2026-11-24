@@ -152,32 +152,87 @@ async function enriquecer(cobros) {
   });
 }
 
-export async function listarCobros(filtros = {}) {
-  const pagina = filtros.pagina ?? 1;
-  const limite = filtros.limite ?? 20;
-  const where = construirFiltros(filtros);
+function esSoloPendientes(valor) {
+  return valor === true || valor === 'true';
+}
 
-  const cobros = await prisma.cobro.findMany({
+function candidatosCobros(where) {
+  return prisma.cobro.findMany({
     where,
-    include: includeCobro,
+    select: { id: true, valorReconocido: true, creadoEn: true },
     orderBy: { creadoEn: 'desc' }
   });
+}
 
-  let enriquecidos = await enriquecer(cobros);
-
-  if (filtros.soloPendientes === 'true') {
-    enriquecidos = enriquecidos.filter((item) => item.saldoPendiente > 0);
-  }
-
-  const total = enriquecidos.length;
-  const partes = enriquecidos.slice((pagina - 1) * limite, pagina * limite);
-
+function paginacion(filtros, total) {
+  const pagina = Math.max(1, Number(filtros.pagina) || 1);
+  const limite = Math.max(1, Number(filtros.limite) || 20);
   return {
-    cobros: partes.map((item) => toCobroDto(item.cobro, item.saldoPendiente, item.totalPagado)),
     total,
     pagina,
     limite,
-    totalPaginas: Math.ceil(total / limite)
+    totalPaginas: Math.ceil(total / limite),
+    offset: (pagina - 1) * limite
+  };
+}
+
+export async function resumenCobrosPendientes(where = {}) {
+  const candidatos = await candidatosCobros(where);
+  const pendientes = (await enriquecer(candidatos)).filter((item) => item.saldoPendiente > 0);
+  const saldoPendiente = pendientes.reduce((suma, item) => suma + item.saldoPendiente, 0);
+
+  return {
+    total: pendientes.length,
+    saldoPendiente: Math.round(saldoPendiente * 100) / 100
+  };
+}
+
+export async function listarCobros(filtros = {}) {
+  const where = construirFiltros(filtros);
+
+  if (!esSoloPendientes(filtros.soloPendientes)) {
+    const totalInicial = await prisma.cobro.count({ where });
+    const { offset, ...meta } = paginacion(filtros, totalInicial);
+    const cobros = await prisma.cobro.findMany({
+      where,
+      include: includeCobro,
+      orderBy: { creadoEn: 'desc' },
+      skip: offset,
+      take: meta.limite
+    });
+    const enriquecidos = await enriquecer(cobros);
+
+    return {
+      ...meta,
+      cobros: enriquecidos.map((item) => toCobroDto(item.cobro, item.saldoPendiente, item.totalPagado))
+    };
+  }
+
+  const candidatos = await candidatosCobros(where);
+  const pendientes = (await enriquecer(candidatos)).filter((item) => item.saldoPendiente > 0);
+  const { offset, ...meta } = paginacion(filtros, pendientes.length);
+  const parte = pendientes.slice(offset, offset + meta.limite);
+
+  if (parte.length === 0) {
+    return { ...meta, cobros: [] };
+  }
+
+  const ids = parte.map((item) => item.cobro.id);
+  const posiciones = new Map(ids.map((id, indice) => [id, indice]));
+  const cobros = await prisma.cobro.findMany({
+    where: { id: { in: ids } },
+    include: includeCobro
+  });
+  cobros.sort((a, b) => (posiciones.get(a.id) ?? 0) - (posiciones.get(b.id) ?? 0));
+
+  const porId = new Map(parte.map((item) => [item.cobro.id, item]));
+
+  return {
+    ...meta,
+    cobros: cobros.map((cobro) => {
+      const item = porId.get(cobro.id);
+      return toCobroDto(cobro, item.saldoPendiente, item.totalPagado);
+    })
   };
 }
 

@@ -2,7 +2,7 @@ import { api } from '../api/client.js';
 import { buildQuery } from '../utils/query.js';
 
 export const incapacidadService = {
-  listar: (filtros) => api.get(`/incapacidades${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/incapacidades${buildQuery(filtros)}`, opciones),
   obtener: (id) => api.get(`/incapacidades/${id}`),
   crear: (datos) => api.post('/incapacidades', datos),
   actualizar: (id, datos) => api.patch(`/incapacidades/${id}`, datos),
@@ -14,7 +14,7 @@ export const incapacidadService = {
 };
 
 export const radicacionService = {
-  listar: (filtros) => api.get(`/radicaciones${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/radicaciones${buildQuery(filtros)}`, opciones),
   obtener: (id) => api.get(`/radicaciones/${id}`),
   crear: (incapacidadId, datos) => api.post(`/radicaciones/incapacidad/${incapacidadId}`, datos)
 };

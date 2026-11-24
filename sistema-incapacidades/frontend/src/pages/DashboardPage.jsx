@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart,
   Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts';
 import { dashboardService } from '../services/gestion.service.js';
-import { mensajeError } from '../api/client.js';
+import { esCancelado, mensajeError } from '../api/client.js';
 import { etiqueta } from '../utils/constantes.js';
 import { formatoDinero, formatoFecha } from '../utils/formato.js';
 import { StatCard } from '../components/common/StatCard.jsx';
@@ -22,35 +22,52 @@ export function DashboardPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [actualizando, setActualizando] = useState(false);
+  const controladorRef = useRef(null);
 
   const cargar = useCallback(async () => {
+    controladorRef.current?.abort();
+    const controlador = new AbortController();
+    controladorRef.current = controlador;
+    const opciones = { signal: controlador.signal };
+
     setActualizando(true);
     setError(null);
-    try {
-      const [respuestaResumen, respuestaGraficas, respuestaUltimos] = await Promise.all([
-        dashboardService.resumen(),
-        dashboardService.graficas(),
-        dashboardService.ultimos()
-      ]);
-      setResumen(respuestaResumen.data);
-      setGraficas(respuestaGraficas.data);
-      setUltimos(respuestaUltimos.data);
-    } catch (fallo) {
-      setError(mensajeError(fallo));
-    } finally {
-      setCargando(false);
-      setActualizando(false);
-    }
+
+    const resultados = await Promise.allSettled([
+      dashboardService.resumen(opciones),
+      dashboardService.graficas(opciones),
+      dashboardService.ultimos(opciones)
+    ]);
+
+    if (controlador.signal.aborted) return;
+
+    const [resultadoResumen, resultadoGraficas, resultadoUltimos] = resultados;
+    if (resultadoResumen.status === 'fulfilled') setResumen(resultadoResumen.value.data);
+    if (resultadoGraficas.status === 'fulfilled') setGraficas(resultadoGraficas.value.data);
+    if (resultadoUltimos.status === 'fulfilled') setUltimos(resultadoUltimos.value.data);
+
+    const fallos = resultados.filter((resultado) => resultado.status === 'rejected' && !esCancelado(resultado.reason));
+    if (fallos.length > 0) setError(fallos.map((fallo) => mensajeError(fallo.reason)).join(' · '));
+
+    setCargando(false);
+    setActualizando(false);
   }, []);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    cargar();
+    return () => controladorRef.current?.abort();
+  }, [cargar]);
 
-  if (cargando) return <Loading mensaje="Cargando dashboard…" />;
-  if (error) return <ErrorState mensaje={error} onReintentar={cargar} />;
+  const porEstado = useMemo(
+    () => (graficas?.porEstado ?? []).map((item) => ({ ...item, nombre: etiqueta(item.estado) })),
+    [graficas]
+  );
+  const porOrigen = useMemo(
+    () => (graficas?.porOrigen ?? []).map((item) => ({ ...item, nombre: etiqueta(item.origen) })),
+    [graficas]
+  );
 
-  const porEstado = (graficas?.porEstado ?? []).map((item) => ({ ...item, nombre: etiqueta(item.estado) }));
-  const porOrigen = (graficas?.porOrigen ?? []).map((item) => ({ ...item, nombre: etiqueta(item.origen) }));
-  const porTipo = (graficas?.porTipo ?? []).map((item) => ({ ...item, nombre: etiqueta(item.tipo) }));
+  if (cargando && !resumen && !graficas && !ultimos) return <Loading mensaje="Cargando dashboard…" />;
 
   return (
     <>
@@ -63,6 +80,8 @@ export function DashboardPage() {
           </button>
         ]}
       />
+
+      {error && <div className="mb-3"><ErrorState mensaje={error} onReintentar={cargar} /></div>}
 
       <div className="row g-3 mb-4">
         <StatCard titulo="Incapacidades" valor={resumen?.totalIncapacidades ?? 0} subtitulo="Registro acumulado" icono="I" variante="primary" />

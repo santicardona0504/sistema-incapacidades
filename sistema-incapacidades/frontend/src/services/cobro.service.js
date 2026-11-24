@@ -2,7 +2,7 @@ import { api } from '../api/client.js';
 import { buildQuery } from '../utils/query.js';
 
 export const cobroService = {
-  listar: (filtros) => api.get(`/cobros${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/cobros${buildQuery(filtros)}`, opciones),
   pendientes: (filtros) => api.get(`/cobros/pendientes${buildQuery(filtros)}`),
   obtener: (id) => api.get(`/cobros/${id}`),
   crear: (datos) => api.post('/cobros', datos),
@@ -13,7 +13,7 @@ export const cobroService = {
 };
 
 export const pagoService = {
-  listar: (filtros) => api.get(`/pagos${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/pagos${buildQuery(filtros)}`, opciones),
   pendientes: (filtros) => api.get(`/pagos/pendientes${buildQuery(filtros)}`),
   obtener: (id) => api.get(`/pagos/${id}`),
   crear: (datos) => api.post('/pagos', datos),

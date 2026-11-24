@@ -2,7 +2,7 @@ import { api } from '../api/client.js';
 import { buildQuery } from '../utils/query.js';
 
 export const empleadoService = {
-  listar: (filtros) => api.get(`/empleados${buildQuery(filtros)}`),
+  listar: (filtros, opciones) => api.get(`/empleados${buildQuery(filtros)}`, opciones),
   obtener: (id) => api.get(`/empleados/${id}`),
   crear: (datos) => api.post('/empleados', datos),
   actualizar: (id, datos) => api.patch(`/empleados/${id}`, datos),
@@ -11,5 +11,5 @@ export const empleadoService = {
 };
 
 export const entidadService = {
-  listar: (filtros) => api.get(`/entidades${buildQuery(filtros)}`)
+  listar: (filtros, opciones) => api.get(`/entidades${buildQuery(filtros)}`, opciones)
 };

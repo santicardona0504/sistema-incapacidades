@@ -146,6 +146,7 @@ model Empleado {
 
   @@index([activo])
   @@index([nombres, apellidos])
+  @@index([apellidos])
   @@map("empleados")
 }
 
@@ -162,6 +163,7 @@ model EntidadSalud {
   actualizadoEn DateTime      @updatedAt @map("actualizado_en")
 
   @@index([tipo, activa])
+  @@index([nombre])
   @@map("entidades_salud")
 }
 
@@ -197,6 +199,7 @@ model Incapacidad {
   @@index([fechaInicio, fechaFin])
   @@index([fechaRecepcion])
   @@index([estado, fechaRecepcion])
+  @@index([creadoEn])
   @@map("incapacidades")
 }
 
@@ -240,6 +243,7 @@ model Radicacion {
 
   @@unique([entidadId, numeroRadicado])
   @@index([incapacidadId])
+  @@index([creadoEn])
   @@map("radicaciones")
 }
 
@@ -300,6 +304,8 @@ model Cobro {
   @@index([incapacidadId])
   @@index([radicacionId])
   @@index([estado])
+  @@index([creadoEn])
+  @@index([fechaSolicitud])
   @@map("cobros")
 }
 
@@ -358,6 +364,8 @@ model Conciliacion {
   actualizadoEn    DateTime              @updatedAt @map("actualizado_en")
 
   @@index([estado])
+  @@index([creadoEn])
+  @@index([fechaInicio])
   @@map("conciliaciones")
 }
 
@@ -386,6 +394,7 @@ model Alerta {
 
   @@unique([incapacidadId, umbral])
   @@index([leida])
+  @@index([fechaGenerada])
   @@map("alertas")
 }
 

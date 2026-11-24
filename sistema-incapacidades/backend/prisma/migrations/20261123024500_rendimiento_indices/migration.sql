@@ -1,0 +1,9 @@
+CREATE INDEX "empleados_apellidos_idx" ON "empleados"("apellidos");
+CREATE INDEX "entidades_salud_nombre_idx" ON "entidades_salud"("nombre");
+CREATE INDEX "incapacidades_creado_en_idx" ON "incapacidades"("creado_en");
+CREATE INDEX "radicaciones_creado_en_idx" ON "radicaciones"("creado_en");
+CREATE INDEX "cobros_creado_en_idx" ON "cobros"("creado_en");
+CREATE INDEX "cobros_fecha_solicitud_idx" ON "cobros"("fecha_solicitud");
+CREATE INDEX "conciliaciones_creado_en_idx" ON "conciliaciones"("creado_en");
+CREATE INDEX "conciliaciones_fecha_inicio_idx" ON "conciliaciones"("fecha_inicio");
+CREATE INDEX "alertas_fecha_generada_idx" ON "alertas"("fecha_generada");

@@ -23,11 +23,20 @@ async function cargarUsuario(req) {
 
   const usuario = await prisma.usuario.findUnique({
     where: { id: Number(payload.sub) },
-    include: {
+    select: {
+      id: true,
+      nombre: true,
+      correo: true,
+      activo: true,
+      ultimoAcceso: true,
+      creadoEn: true,
       rol: {
-        include: {
+        select: {
+          id: true,
+          nombre: true,
+          descripcion: true,
           permisos: {
-            include: { permiso: true }
+            select: { permiso: { select: { clave: true } } }
           }
         }
       }
