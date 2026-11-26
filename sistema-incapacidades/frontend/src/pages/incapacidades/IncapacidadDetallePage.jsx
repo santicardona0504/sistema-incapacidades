@@ -17,6 +17,7 @@ import { StatusBadge } from '../../components/common/StatusBadge.jsx';
 import { FormModal } from '../../components/common/Modals.jsx';
 import { ESTADOS_INCAPACIDAD, etiqueta } from '../../utils/constantes.js';
 import { fechaParaInput, formatoFecha, formatoFechaHora } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 const TRANSICIONES = {
   REGISTRADA: ['TRANSCRITA'],
@@ -65,7 +66,7 @@ export function IncapacidadDetallePage() {
         documentoService.listar({ incapacidadId: id, limite: 100 }),
         historialService.listar({ incapacidadId: id, limite: 100 }),
         incapacidadService.rechazos(id),
-        entidadService.listar({ activa: 'true', limite: 200 })
+        listarTodo(entidadService.listar, { activa: 'true' }, 'entidades')
       ];
       const respuestas = await Promise.all(peticiones);
       setRegistro(respuestas[0].data);
@@ -428,6 +429,7 @@ export function IncapacidadDetallePage() {
           onChange={cambiar}
           onSubmit={guardar}
           onClose={cerrar}
+          onLimpiar={(vacios) => setValores((actuales) => ({ ...actuales, ...vacios }))}
           guardando={guardando}
           error={errorFormulario}
         />

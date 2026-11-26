@@ -91,13 +91,9 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="demo-credentials p-3 mt-4">
-            <p className="mb-2 fw-semibold">Cuentas de demostración · clave <strong>Demo1234!</strong></p>
-            <div>admin@incapacidades.test · Administrador</div>
-            <div>gestion.humana@incapacidades.test · Gestión Humana</div>
-            <div>tesoreria@incapacidades.test · Tesorería</div>
-            <div>consulta@incapacidades.test · Consulta</div>
-          </div>
+          <p className="text-muted small mb-0 mt-4">
+            Si aún no tienes cuenta, solicita al administrador del sistema que la cree desde Usuarios.
+          </p>
         </div>
       </section>
     </div>

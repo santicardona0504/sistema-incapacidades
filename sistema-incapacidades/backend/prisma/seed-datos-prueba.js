@@ -1,6 +1,11 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
+if (process.env.PERMITIR_DATOS_DEMO !== '1') {
+  console.error('Este script crea datos ficticios y está deshabilitado. Solo se puede ejecutar de forma explícita con PERMITIR_DATOS_DEMO=1; no se invoca desde el arranque ni desde las migraciones.');
+  process.exit(1);
+}
+
 const prisma = new PrismaClient();
 
 async function obtenerDatosBase() {

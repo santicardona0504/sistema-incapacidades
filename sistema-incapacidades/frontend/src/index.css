@@ -242,14 +242,6 @@ body {
 
 .login-card { width: 100%; max-width: 410px; }
 
-.demo-credentials {
-  background: #f8fafc;
-  border: 1px solid var(--app-border);
-  border-radius: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
-}
-
 .sidebar-overlay {
   position: fixed;
   inset: 0;

@@ -70,6 +70,18 @@ export function ReportesPage() {
     }
   };
 
+  const limpiar = () => {
+    // Cancelar la consulta en curso para que una respuesta tardía no reponga
+    // el reporte o los filtros después de limpiar.
+    controladorConsultaRef.current?.abort();
+    controladorConsultaRef.current = null;
+    setValoresFiltro({});
+    setFiltros({});
+    setReporte(null);
+    setError(null);
+    setCargando(false);
+  };
+
   useEffect(() => () => controladorConsultaRef.current?.abort(), []);
 
   const exportar = async () => {
@@ -156,7 +168,7 @@ export function ReportesPage() {
             valores={valoresFiltro}
             onChange={setValoresFiltro}
             onBuscar={() => { const siguientes = { ...valoresFiltro }; setFiltros(siguientes); consultar(siguientes); }}
-            onLimpiar={() => { setValoresFiltro({}); setFiltros({}); setReporte(null); }}
+            onLimpiar={limpiar}
           />
         </div>
       </div>
@@ -174,7 +186,7 @@ export function ReportesPage() {
               columnas={columnas}
               filas={reporte?.filas ?? []}
               cargando={cargando}
-              vacio="Selecciona los filtros y presiona Consultar"
+              vacio={reporte ? 'No hay información registrada para los filtros seleccionados' : 'Selecciona los filtros y presiona Consultar'}
             />
           )}
         </div>

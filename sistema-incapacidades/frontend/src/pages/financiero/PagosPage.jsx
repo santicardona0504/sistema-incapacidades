@@ -14,6 +14,7 @@ import { ErrorState, Loading } from '../../components/common/States.jsx';
 import { FormModal } from '../../components/common/Modals.jsx';
 import { StatCard } from '../../components/common/StatCard.jsx';
 import { formatoDinero, formatoFecha } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 export function PagosPage() {
   const { tienePermiso } = useAuth();
@@ -54,9 +55,9 @@ export function PagosPage() {
 
   useEffect(() => {
     Promise.all([
-      pagoService.pendientes({ limite: 200 }),
-      entidadService.listar({ activa: 'true', limite: 200 }),
-      documentoService.listar({ tipo: 'SOPORTE_PAGO', limite: 500 })
+      listarTodo(pagoService.pendientes, {}, 'cobros'),
+      listarTodo(entidadService.listar, { activa: 'true' }, 'entidades'),
+      listarTodo(documentoService.listar, { tipo: 'SOPORTE_PAGO' }, 'documentos')
     ]).then(([respuestaPendientes, respuestaEntidades, respuestaDocumentos]) => {
       setPendientes(respuestaPendientes.data.cobros ?? []);
       setEntidades(respuestaEntidades.data.entidades ?? []);
@@ -236,6 +237,7 @@ export function PagosPage() {
           onChange={(clave, valor) => clave === 'cobroId' ? cambiarCobro(valor) : setValores((actuales) => ({ ...actuales, [clave]: valor }))}
           onSubmit={guardar}
           onClose={cerrar}
+          onLimpiar={(vacios) => setValores((actuales) => ({ ...actuales, ...vacios, incapacidadId: '' }))}
           guardando={guardando}
           error={errorFormulario}
         />
@@ -252,6 +254,7 @@ export function PagosPage() {
           onChange={(clave, valor) => setValores((actuales) => ({ ...actuales, [clave]: valor }))}
           onSubmit={guardar}
           onClose={cerrar}
+          onLimpiar={(vacios) => setValores((actuales) => ({ ...actuales, ...vacios }))}
           guardando={guardando}
           error={errorFormulario}
         />

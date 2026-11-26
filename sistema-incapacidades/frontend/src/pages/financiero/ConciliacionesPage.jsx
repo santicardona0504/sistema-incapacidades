@@ -143,6 +143,7 @@ export function ConciliacionesPage() {
           onChange={(clave, valor) => setValores((actuales) => ({ ...actuales, [clave]: valor }))}
           onSubmit={crear}
           onClose={() => setAbrir(false)}
+          onLimpiar={(vacios) => setValores((actuales) => ({ ...actuales, ...vacios }))}
           guardando={guardando}
           error={errorFormulario}
         />

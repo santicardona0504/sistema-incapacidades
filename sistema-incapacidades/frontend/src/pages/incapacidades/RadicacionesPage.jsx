@@ -5,6 +5,7 @@ import { entidadService } from '../../services/empleado.service.js';
 import { incapacidadService } from '../../services/incapacidad.service.js';
 import { ManagePage } from '../../components/common/ManagePage.jsx';
 import { formatoFecha } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 export function RadicacionesPage() {
   const { id } = useParams();
@@ -15,8 +16,8 @@ export function RadicacionesPage() {
 
   useEffect(() => {
     Promise.all([
-      entidadService.listar({ activa: 'true', limite: 200 }),
-      incapacidadService.listar({ limite: 500 })
+      listarTodo(entidadService.listar, { activa: 'true' }, 'entidades'),
+      listarTodo(incapacidadService.listar, {}, 'incapacidades')
     ]).then(([respuestaEntidades, respuestaIncapacidades]) => {
       setEntidades(respuestaEntidades.data.entidades ?? []);
       setIncapacidades(respuestaIncapacidades.data.incapacidades ?? []);

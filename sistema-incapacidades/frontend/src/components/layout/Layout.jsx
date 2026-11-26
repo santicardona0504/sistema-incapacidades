@@ -14,6 +14,7 @@ const NAVEGACION = [
     titulo: 'Gestión',
     items: [
       { a: '/empleados', texto: 'Empleados', permiso: 'EMPLEADOS_VER', icono: 'E' },
+      { a: '/entidades', texto: 'Entidades EPS/ARL', permiso: 'ENTIDADES_VER', icono: 'ES' },
       { a: '/incapacidades', texto: 'Incapacidades', permiso: 'INCAPACIDADES_VER', icono: 'I' },
       { a: '/radicaciones', texto: 'Radicaciones', permiso: 'RADICACIONES_VER', icono: 'R' },
       { a: '/documentos', texto: 'Documentos', permiso: 'DOCUMENTOS_VER', icono: 'D' },
@@ -43,6 +44,7 @@ const NAVEGACION = [
 const TITULOS = {
   '/': 'Dashboard',
   '/empleados': 'Empleados',
+  '/entidades': 'Entidades EPS/ARL',
   '/incapacidades': 'Incapacidades',
   '/radicaciones': 'Radicaciones',
   '/documentos': 'Documentos',

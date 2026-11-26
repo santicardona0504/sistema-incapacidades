@@ -7,6 +7,7 @@ import { ManagePage } from '../../components/common/ManagePage.jsx';
 import { StatusBadge } from '../../components/common/StatusBadge.jsx';
 import { ESTADOS_INCAPACIDAD, ORIGENES, TIPOS_INCAPACIDAD, etiqueta } from '../../utils/constantes.js';
 import { formatoFecha } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 const servicio = { listar: (filtros) => incapacidadService.listar(filtros) };
 
@@ -17,8 +18,8 @@ export function IncapacidadesPage() {
 
   useEffect(() => {
     Promise.all([
-      empleadoService.listar({ activo: 'true', limite: 200 }),
-      entidadService.listar({ limite: 200 })
+      listarTodo(empleadoService.listar, { activo: 'true' }, 'empleados'),
+      listarTodo(entidadService.listar, {}, 'entidades')
     ]).then(([respuestaEmpleados, respuestaEntidades]) => {
       setEmpleados(respuestaEmpleados.data.empleados ?? []);
       setEntidades(respuestaEntidades.data.entidades ?? []);

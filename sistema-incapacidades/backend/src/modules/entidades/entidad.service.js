@@ -1,5 +1,6 @@
 import { prisma } from '../../utils/prisma.js';
 import { AppError } from '../../utils/api-response.js';
+import { registrarAuditoria } from '../auditoria/audit.service.js';
 
 function toEntidadDto(entidad) {
   return {
@@ -60,4 +61,88 @@ export async function obtenerEntidad(id) {
   }
 
   return toEntidadDto(entidad);
+}
+
+async function validarNitDisponible(nit, idExcluido) {
+  const existente = await prisma.entidadSalud.findUnique({ where: { nit } });
+
+  if (existente && existente.id !== idExcluido) {
+    throw new AppError(409, 'El NIT ya está registrado');
+  }
+}
+
+export async function crearEntidad(datos, req) {
+  await validarNitDisponible(datos.nit);
+
+  const entidad = await prisma.$transaction(async (tx) => {
+    const creada = await tx.entidadSalud.create({ data: datos });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'ENTIDAD_CREAR',
+      entidad: 'ENTIDAD_SALUD',
+      entidadId: creada.id,
+      req,
+      client: tx
+    });
+
+    return creada;
+  });
+
+  return toEntidadDto(entidad);
+}
+
+export async function editarEntidad(id, datos, req) {
+  const entidad = await prisma.entidadSalud.findUnique({ where: { id } });
+
+  if (!entidad) {
+    throw new AppError(404, 'Entidad no encontrada');
+  }
+
+  if (datos.nit) {
+    await validarNitDisponible(datos.nit, id);
+  }
+
+  const actualizada = await prisma.$transaction(async (tx) => {
+    const resultado = await tx.entidadSalud.update({ where: { id }, data: datos });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: 'ENTIDAD_EDITAR',
+      entidad: 'ENTIDAD_SALUD',
+      entidadId: id,
+      detalles: { campos: Object.keys(datos) },
+      req,
+      client: tx
+    });
+
+    return resultado;
+  });
+
+  return toEntidadDto(actualizada);
+}
+
+export async function cambiarEstadoEntidad(id, activa, req) {
+  const entidad = await prisma.entidadSalud.findUnique({ where: { id } });
+
+  if (!entidad) {
+    throw new AppError(404, 'Entidad no encontrada');
+  }
+
+  const actualizada = await prisma.$transaction(async (tx) => {
+    const resultado = await tx.entidadSalud.update({ where: { id }, data: { activa } });
+
+    await registrarAuditoria({
+      usuarioId: req.usuario.id,
+      accion: activa ? 'ENTIDAD_ACTIVAR' : 'ENTIDAD_DESACTIVAR',
+      entidad: 'ENTIDAD_SALUD',
+      entidadId: id,
+      req,
+      client: tx
+    });
+
+    return resultado;
+  });
+
+  return toEntidadDto(actualizada);
 }

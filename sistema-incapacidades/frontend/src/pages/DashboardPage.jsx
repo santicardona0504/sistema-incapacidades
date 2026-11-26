@@ -67,6 +67,13 @@ export function DashboardPage() {
     [graficas]
   );
 
+  const sinInformacion = Boolean(resumen)
+    && Number(resumen.totalIncapacidades ?? 0) === 0
+    && Number(resumen.cobrosPendientes ?? 0) === 0
+    && Number(resumen.pagosRealizados ?? 0) === 0
+    && Number(resumen.totalAlertas ?? 0) === 0
+    && Number(resumen.conciliaciones ?? 0) === 0;
+
   if (cargando && !resumen && !graficas && !ultimos) return <Loading mensaje="Cargando dashboard…" />;
 
   return (
@@ -83,6 +90,12 @@ export function DashboardPage() {
 
       {error && <div className="mb-3"><ErrorState mensaje={error} onReintentar={cargar} /></div>}
 
+      {sinInformacion && (
+        <div className="alert alert-info mb-4" role="status">
+          No hay información registrada. Comienza creando empleados, entidades e incapacidades desde los formularios.
+        </div>
+      )}
+
       <div className="row g-3 mb-4">
         <StatCard titulo="Incapacidades" valor={resumen?.totalIncapacidades ?? 0} subtitulo="Registro acumulado" icono="I" variante="primary" />
         <StatCard titulo="Cobros pendientes" valor={resumen?.cobrosPendientes ?? 0} subtitulo="Con saldo por recaudar" icono="C" variante="warning" />
@@ -90,7 +103,7 @@ export function DashboardPage() {
         <StatCard titulo="Alertas no leídas" valor={resumen?.alertasNoLeidas ?? 0} subtitulo={`${resumen?.totalAlertas ?? 0} alertas en total`} icono="A" variante="danger" />
       </div>
 
-      <div className="row g-3 mb-4">
+      {!sinInformacion && <div className="row g-3 mb-4">
         <div className="col-12 col-xl-8">
           <div className="card chart-card shadow-sm h-100">
             <div className="card-body">
@@ -125,9 +138,9 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
-      <div className="row g-3 mb-4">
+      {!sinInformacion && <div className="row g-3 mb-4">
         <div className="col-12 col-xl-7">
           <div className="card chart-card shadow-sm h-100">
             <div className="card-body">
@@ -160,9 +173,9 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
-      <div className="row g-3">
+      {!sinInformacion && <div className="row g-3">
         <div className="col-12 col-xl-6">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white d-flex justify-content-between align-items-center">
@@ -220,7 +233,7 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
     </>
   );
 }

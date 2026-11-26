@@ -15,6 +15,7 @@ import { StatusBadge } from '../../components/common/StatusBadge.jsx';
 import { FormModal } from '../../components/common/Modals.jsx';
 import { ESTADOS_COBRO, etiqueta } from '../../utils/constantes.js';
 import { formatoDinero, formatoFecha } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 const ESTADOS_EDITABLES = ['PENDIENTE', 'GESTIONADO', 'COMPROMISO_PAGO', 'RECHAZADO'];
 
@@ -26,8 +27,8 @@ export function CobrosPage() {
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
-  const [valoresFiltro, setValoresFiltro] = useState({ solopendientes: 'true' });
-  const [filtros, setFiltros] = useState({ solopendientes: 'true' });
+  const [valoresFiltro, setValoresFiltro] = useState({ soloPendientes: 'true' });
+  const [filtros, setFiltros] = useState({ soloPendientes: 'true' });
   const [incapacidades, setIncapacidades] = useState([]);
   const [entidades, setEntidades] = useState([]);
   const [radicaciones, setRadicaciones] = useState([]);
@@ -58,8 +59,8 @@ export function CobrosPage() {
 
   useEffect(() => {
     Promise.all([
-      incapacidadService.listar({ limite: 500 }),
-      entidadService.listar({ activa: 'true', limite: 200 })
+      listarTodo(incapacidadService.listar, {}, 'incapacidades'),
+      listarTodo(entidadService.listar, { activa: 'true' }, 'entidades')
     ]).then(([respuestaIncapacidades, respuestaEntidades]) => {
       setIncapacidades(respuestaIncapacidades.data.incapacidades ?? []);
       setEntidades(respuestaEntidades.data.entidades ?? []);
@@ -222,14 +223,14 @@ export function CobrosPage() {
               { clave: 'fechaDesde', etiqueta: 'Desde', tipo: 'date' },
               { clave: 'fechaHasta', etiqueta: 'Hasta', tipo: 'date' },
               {
-                clave: 'solopendientes', etiqueta: 'Solo pendientes', tipo: 'select',
+                clave: 'soloPendientes', etiqueta: 'Solo pendientes', tipo: 'select',
                 opciones: [{ valor: 'true', etiqueta: 'Sí' }, { valor: 'false', etiqueta: 'No' }]
               }
             ]}
             valores={valoresFiltro}
             onChange={setValoresFiltro}
             onBuscar={() => { setFiltros({ ...valoresFiltro }); setPagina(1); }}
-            onLimpiar={() => { const limpios = { solopendientes: 'true' }; setValoresFiltro(limpios); setFiltros(limpios); setPagina(1); }}
+            onLimpiar={() => { setValoresFiltro({}); setFiltros({}); setPagina(1); }}
           />
         </div>
       </div>
@@ -269,6 +270,7 @@ export function CobrosPage() {
           onChange={(clave, valor) => setValores((actuales) => ({ ...actuales, [clave]: valor }))}
           onSubmit={guardar}
           onClose={cerrar}
+          onLimpiar={(vacios) => setValores((actuales) => ({ ...actuales, ...vacios }))}
           guardando={guardando}
           error={errorFormulario}
         />

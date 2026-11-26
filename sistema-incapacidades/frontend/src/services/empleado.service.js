@@ -11,5 +11,8 @@ export const empleadoService = {
 };
 
 export const entidadService = {
-  listar: (filtros, opciones) => api.get(`/entidades${buildQuery(filtros)}`, opciones)
+  listar: (filtros, opciones) => api.get(`/entidades${buildQuery(filtros)}`, opciones),
+  crear: (datos) => api.post('/entidades', datos),
+  actualizar: (id, datos) => api.patch(`/entidades/${id}`, datos),
+  cambiarEstado: (id, activa) => api.patch(`/entidades/${id}/estado`, { activa })
 };

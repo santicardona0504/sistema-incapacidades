@@ -21,6 +21,7 @@ import { ReportesPage } from './pages/reportes/ReportesPage.jsx';
 import { AuditoriaPage } from './pages/administracion/AuditoriaPage.jsx';
 import { UsuariosPage } from './pages/administracion/UsuariosPage.jsx';
 import { RolesPage } from './pages/administracion/RolesPage.jsx';
+import { EntidadesPage } from './pages/administracion/EntidadesPage.jsx';
 
 function NotFoundPage() {
   return (
@@ -94,6 +95,7 @@ export default function App() {
             <Route path="auditoria" element={<AuditoriaPage />} />
             <Route path="usuarios" element={<UsuariosPage />} />
             <Route path="roles" element={<RolesPage />} />
+            <Route path="entidades" element={<EntidadesPage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Route>

@@ -12,6 +12,7 @@ import { StatusBadge } from '../../components/common/StatusBadge.jsx';
 import { StatCard } from '../../components/common/StatCard.jsx';
 import { FormModal } from '../../components/common/Modals.jsx';
 import { formatoDinero, formatoFecha, formatoFechaHora } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 export function ConciliacionDetallePage() {
   const { id } = useParams();
@@ -36,11 +37,10 @@ export function ConciliacionDetallePage() {
       const datos = respuesta.data;
       setConciliacion(datos);
       const [respuestaPagos, respuestaHistorial] = await Promise.all([
-        serviciosPago.listar({
+        listarTodo(serviciosPago.listar, {
           fechaDesde: datos.fechaInicio,
-          fechaHasta: datos.fechaFin,
-          limite: 500
-        }),
+          fechaHasta: datos.fechaFin
+        }, 'pagos'),
         conciliacionService.historial(id)
       ]);
       setPagos(respuestaPagos.data.pagos ?? []);
@@ -212,6 +212,7 @@ export function ConciliacionDetallePage() {
           onChange={(clave, valor) => clave === 'pagoId' ? seleccionarPago(valor) : setValores((actuales) => ({ ...actuales, [clave]: valor }))}
           onSubmit={guardar}
           onClose={() => setModal(null)}
+          onLimpiar={(vacios) => setValores((actuales) => ({ ...actuales, ...vacios }))}
           guardando={guardando}
           error={errorFormulario}
         />
@@ -225,6 +226,7 @@ export function ConciliacionDetallePage() {
           onChange={(clave, valor) => setValores((actuales) => ({ ...actuales, [clave]: valor }))}
           onSubmit={guardar}
           onClose={() => setModal(null)}
+          onLimpiar={(vacios) => setValores((actuales) => ({ ...actuales, ...vacios }))}
           guardando={guardando}
           error={errorFormulario}
         />

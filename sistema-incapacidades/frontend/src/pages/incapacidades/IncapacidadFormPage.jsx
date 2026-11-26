@@ -10,6 +10,7 @@ import { PageHeader } from '../../components/common/PageHeader.jsx';
 import { ErrorState, Loading } from '../../components/common/States.jsx';
 import { ESTADOS_INCAPACIDAD, ORIGENES, TIPOS_INCAPACIDAD, etiqueta } from '../../utils/constantes.js';
 import { fechaParaInput } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 const VALORES_VACIOS = {
   empleadoId: '', entidadId: '', tipo: '', origen: '',
@@ -41,8 +42,8 @@ export function IncapacidadFormPage() {
     setError(null);
     try {
       const peticiones = [
-        empleadoService.listar({ activo: 'true', limite: 500 }),
-        entidadService.listar({ activa: 'true', limite: 500 })
+        listarTodo(empleadoService.listar, { activo: 'true' }, 'empleados'),
+        listarTodo(entidadService.listar, { activa: 'true' }, 'entidades')
       ];
       if (esEdicion) peticiones.push(incapacidadService.obtener(id));
 

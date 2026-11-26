@@ -1,5 +1,8 @@
 export const PERMISOS = [
   { clave: 'ENTIDADES_VER', descripcion: 'Consultar entidades EPS y ARL' },
+  { clave: 'ENTIDADES_CREAR', descripcion: 'Registrar entidades EPS y ARL' },
+  { clave: 'ENTIDADES_EDITAR', descripcion: 'Editar entidades EPS y ARL' },
+  { clave: 'ENTIDADES_DESACTIVAR', descripcion: 'Activar o desactivar entidades EPS y ARL' },
   { clave: 'USUARIOS_VER', descripcion: 'Consultar usuarios' },
   { clave: 'USUARIOS_CREAR', descripcion: 'Crear usuarios' },
   { clave: 'USUARIOS_EDITAR', descripcion: 'Editar usuarios' },
@@ -38,6 +41,9 @@ export const PERMISOS_POR_ROL = {
   ADMINISTRADOR: TODAS,
   GESTION_HUMANA: [
     'ENTIDADES_VER',
+    'ENTIDADES_CREAR',
+    'ENTIDADES_EDITAR',
+    'ENTIDADES_DESACTIVAR',
     'USUARIOS_VER',
     'EMPLEADOS_VER',
     'EMPLEADOS_CREAR',

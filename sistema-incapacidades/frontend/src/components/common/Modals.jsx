@@ -1,11 +1,23 @@
 import { useEffect } from 'react';
 
-export function FormModal({ titulo, campos, valores, onChange, onSubmit, onClose, guardando, error, tamano = 'lg' }) {
+export function FormModal({ titulo, campos, valores, onChange, onSubmit, onClose, onLimpiar, guardando, error, tamano = 'lg' }) {
   useEffect(() => {
     const manejarTecla = (evento) => { if (evento.key === 'Escape') onClose(); };
     document.addEventListener('keydown', manejarTecla);
     return () => document.removeEventListener('keydown', manejarTecla);
   }, [onClose]);
+
+  // Un solo cambio por campo: evitar actualizaciones parciales o valores que reaparecen
+  // cuando el componente padre no usa actualizadores funcionales de useState.
+  const limpiar = () => {
+    const vacios = {};
+    campos.forEach((campo) => {
+      if (campo.deshabilitado) return;
+      vacios[campo.clave] = campo.tipo === 'checkbox' ? false : '';
+    });
+    if (onLimpiar) onLimpiar(vacios);
+    else Object.entries(vacios).forEach(([clave, valor]) => onChange(clave, valor));
+  };
 
   return (
     <div className="modal d-block" tabIndex="-1" role="dialog" aria-modal="true" aria-label={titulo}>
@@ -88,6 +100,7 @@ export function FormModal({ titulo, campos, valores, onChange, onSubmit, onClose
             </div>
             <div className="modal-footer bg-light">
               <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
+              <button type="button" className="btn btn-outline-secondary" onClick={limpiar}>Limpiar</button>
               <button type="submit" className="btn btn-primary" disabled={guardando}>
                 {guardando ? 'Guardando…' : 'Guardar'}
               </button>

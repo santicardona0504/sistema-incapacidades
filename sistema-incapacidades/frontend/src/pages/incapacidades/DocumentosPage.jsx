@@ -11,6 +11,7 @@ import { DataTable } from '../../components/common/DataTable.jsx';
 import { PageHeader } from '../../components/common/PageHeader.jsx';
 import { ErrorState, Loading } from '../../components/common/States.jsx';
 import { formatoFechaHora } from '../../utils/formato.js';
+import { listarTodo } from '../../utils/listados.js';
 
 const TIPOS_DOCUMENTO = ['CERTIFICADO', 'SOPORTE', 'RADICACION', 'CORRECCION', 'SOPORTE_PAGO', 'OTRO'];
 
@@ -58,7 +59,7 @@ function DocumentosContenido({ incapacidadId }) {
     if (incapacidadId) {
       incapacidadService.rechazos(incapacidadId).then((respuesta) => setRechazos(respuesta.data ?? [])).catch(() => {});
     } else {
-      incapacidadService.listar({ limite: 500 }).then((respuesta) => setIncapacidades(respuesta.data.incapacidades ?? [])).catch(() => {});
+      listarTodo(incapacidadService.listar, {}, 'incapacidades').then((respuesta) => setIncapacidades(respuesta.data.incapacidades ?? [])).catch(() => {});
     }
   }, [incapacidadId]);
 

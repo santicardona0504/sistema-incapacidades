@@ -211,6 +211,7 @@ export function ManagePage({
           onChange={cambiarCampo}
           onSubmit={guardar}
           onClose={() => setModal(null)}
+          onLimpiar={(vacios) => setValoresFormulario((actuales) => ({ ...actuales, ...vacios }))}
           guardando={guardando}
           error={errorFormulario}
         />

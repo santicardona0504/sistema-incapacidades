@@ -13,7 +13,7 @@ Proyecto académico Full Stack para registrar y seguir incapacidades médicas y 
 - Etapa 5: frontend React/Vite con autenticación, guards por permiso, dashboard con Recharts y pantallas para todos los módulos.
 - Etapa 6: pruebas `node:test` + `fetch`, endurecimiento de seguridad, documentación y verificación final.
 
-El sistema funciona de extremo a extremo con datos ficticios idempotentes y el frontend se comunica con la API mediante cookies `httpOnly`.
+El sistema funciona de extremo a extremo con datos registrados manualmente y el frontend se comunica con la API mediante cookies `httpOnly`. No se crean usuarios, empleados ni registros operativos de forma automática al iniciar, migrar o sembrar la base de datos.
 
 ## Requisitos previos
 
@@ -43,8 +43,11 @@ sistema-incapacidades/
     prisma/
       schema.prisma
       migrations/
-      seed.js
-      seed-datos-prueba.js
+      seed.js             # solo catálogos base (roles y permisos)
+      catalogos.js        # siembra aditiva de catálogos
+      crear-admin.js      # bootstrap del primer administrador
+      desactivar-usuarios.js
+      seed-datos-prueba.js # deshabilitado salvo autorización explícita
     src/
       config/
       modules/
@@ -119,7 +122,7 @@ Decisiones acordadas:
 - Las conciliaciones se muestran como `Pendiente de revisión` (`EN_REVISION`), `Conciliada` (`VALIDADA` sin diferencias) o `Con diferencias` (`VALIDADA` con diferencias).
 - Las alertas se calculan por días transcurridos desde `fechaInicio` de cada incapacidad: 90, 120, 150 y 180 días; no se acumulan días entre empleados.
 - Autenticación implementada: JWT en cookie `httpOnly` con contraseñas `bcrypt`.
-- Seeds ficticios idempotentes: `npm run seed` (catálogos base) y `npm run seed:demo` (datos operativos de las etapas 3 y 4).
+- Arranque sin datos de demostración: `npm run seed` solo asegura catálogos (roles y permisos) de forma aditiva; `npm run crear:admin` crea el primer administrador con contraseña aleatoria y `npm run desactivar:usuarios` retira credenciales de cuentas específicas sin borrarlas. `npm run seed:demo` está deshabilitado y solo se habilita con `PERMITIR_DATOS_DEMO=1` en un entorno aislado.
 - Documentos privados: PDF/JPG/PNG hasta `MAX_FILE_SIZE_MB`, guardados con nombre UUID en `backend/storage/documentos`, validados por firma real del archivo y servidos solo por endpoints autorizados.
 - Reportes en CSV compatible con Excel (BOM UTF-8), también disponibles en JSON.
 
@@ -189,26 +192,39 @@ npm install
 
 ```powershell
 npx prisma validate
-npx prisma format
-npx prisma migrate dev --name init
+npx prisma migrate deploy
 npx prisma generate
 ```
 
-`migrate dev` crea la base de datos, aplica todas las migraciones versionadas (inicial y `add_cobro_radicacion`) y genera el cliente de Prisma. En una copia ya migrada usa `npx prisma migrate status` para confirmar que no hay cambios pendientes.
+`migrate deploy` crea la base de datos y aplica las tres migraciones versionadas sin ejecutar seeds. Para desarrollo con cambios de esquema usa `npx prisma migrate dev --name <cambio>`; ya no hay hook `prisma.seed`, por lo que tampoco en ese caso se generan datos automáticamente. En una copia ya migrada usa `npx prisma migrate status` para confirmar que no hay cambios pendientes.
 
-### 5. Cargar datos ficticios de prueba
+### 5. Cargar solo los catálogos base
 
 ```powershell
 npm run seed
 ```
 
-El seed es idempotente: crea o actualiza 6 roles, 31 permisos, 6 usuarios, 3 entidades EPS/ARL y 6 empleados ficticios.
+El seed es aditivo e idempotente: asegura 6 roles, 34 permisos y sus asignaciones sin eliminar ni sobrescribir lo que ya configures desde la interfaz. **No crea usuarios, empleados, entidades ni registros operativos.**
 
-Para cargar además datos operativos de incapacidades, radicaciones, cobros, pagos, conciliaciones y alertas:
+`npm run seed:demo` está deshabilitado: solo se ejecuta de forma explícita con `PERMITIR_DATOS_DEMO=1` y no debe usarse en la base de trabajo.
+
+### 5b. Crear el primer administrador
 
 ```powershell
-npm run seed:demo
+$env:ADMIN_NOMBRE = 'Administrador'
+$env:ADMIN_CORREO = 'administrador@incapacidades.local'
+npm run crear:admin
 ```
+
+Si no defines `ADMIN_PASSWORD`, el script genera una contraseña aleatoria y la muestra **una sola vez**; guárdala y cámbiala desde Usuarios tras iniciar sesión. El script falla si el correo ya existe, por lo que nunca sobrescribe un usuario. Para retirar credenciales de cuentas específicas sin borrarlas:
+
+```powershell
+$env:CORREOS_A_DESACTIVAR = 'correo1@dominio,correo2@dominio'
+$env:CONFIRMAR = '1'
+npm run desactivar:usuarios
+```
+
+La desactivación pone `activo=false` y sustituye el hash de contraseña por uno aleatorio; conserva todas las relaciones, el historial y la auditoría.
 
 ### 6. Iniciar el backend
 
@@ -242,7 +258,7 @@ El resultado se escribe en `frontend/dist`.
 
 ## Verificación rápida
 
-Abre `http://localhost:5173` e inicia sesión con `admin@incapacidades.test` / `Demo1234!`. Para comprobar solo la API, abre `http://localhost:4000/api/health` o ejecuta:
+Abre `http://localhost:5173` e inicia sesión con el correo y la contraseña generados en el paso 5b. Si la base está vacía, el dashboard muestra «No hay información registrada» y los listados y reportes aparecen sin filas. Para comprobar solo la API, abre `http://localhost:4000/api/health` o ejecuta:
 
 ```powershell
 curl http://localhost:4000/api/health
@@ -268,20 +284,20 @@ También puedes inspeccionar la base con:
 npx prisma studio
 ```
 
-## Usuarios de prueba
+## Cómo empezar a registrar información propia
 
-Todos son ficticios y usan el dominio reservado `.test`. Contraseña para los seis: `Demo1234!`.
+1. Inicia sesión con el administrador creado en el paso 5b.
+2. En **Entidades EPS/ARL** registra las EPS y ARL que uses (botón *Nuevo* → NIT, nombre y tipo → *Guardar*).
+3. En **Usuarios** crea una cuenta por persona, asigna uno de los seis roles existentes y entrega la contraseña por un canal seguro.
+4. En **Roles y permisos** ajusta, si hace falta, los permisos de cada rol. No es necesario crear roles nuevos.
+5. En **Empleados** registra cada persona (identificación, nombres, apellidos, cargo y área).
+6. En **Incapacidades** registra cada caso usando el empleado y la entidad creados; el sistema genera el código y el historial inicial.
+7. Sube los soportes en **Documentos**, transcribe en **Radicaciones** y continúa con **Cobros**, **Pagos** y **Conciliaciones**.
+8. Consulta **Dashboard** y **Reportes**: solo muestran lo registrado; cuando no hay datos se indica explícitamente.
 
-| Correo | Rol |
-| --- | --- |
-| `admin@incapacidades.test` | Administrador |
-| `gestion.humana@incapacidades.test` | Gestión Humana |
-| `personal@incapacidades.test` | Administración de Personal |
-| `tesoreria@incapacidades.test` | Tesorería |
-| `contabilidad@incapacidades.test` | Contabilidad |
-| `consulta@incapacidades.test` | Consulta |
+Todos los formularios validan los datos antes de guardar y ofrecen *Guardar*, *Editar*, *Limpiar* y *Cancelar*. Los selectores se llenan con los registros creados por ti, recorriendo la paginación de la API (máximo 100 por página).
 
-También hay 6 empleados ficticios con identificaciones `1000000001` a `1000000006` y 3 entidades: EPS Demo Salud Integral, ARL Demo Riesgos Seguros y EPS Demo Vida Saludable.
+**Cuentas de demostración:** las seis cuentas `@incapacidades.test` que existían en la base de trabajo fueron desactivadas y su contraseña compartida fue rotada; ya no pueden iniciar sesión, pero sus registros e historial se conservan. El frontend tampoco muestra credenciales de prueba.
 
 ## API de la Etapa 2
 
@@ -307,11 +323,16 @@ Todas las rutas, excepto `/api/auth/login` y `/api/health`, requieren la cookie 
 | POST | `/api/empleados` | `EMPLEADOS_CREAR` |
 | PATCH | `/api/empleados/:id` | `EMPLEADOS_EDITAR` |
 | PATCH | `/api/empleados/:id/estado` | `EMPLEADOS_DESACTIVAR` |
+| GET | `/api/entidades` | `ENTIDADES_VER` |
+| GET | `/api/entidades/:id` | `ENTIDADES_VER` |
+| POST | `/api/entidades` | `ENTIDADES_CREAR` |
+| PATCH | `/api/entidades/:id` | `ENTIDADES_EDITAR` |
+| PATCH | `/api/entidades/:id/estado` | `ENTIDADES_DESACTIVAR` |
 
 Ejemplo de login:
 
 ```powershell
-$body = @{ correo = 'admin@incapacidades.test'; password = 'Demo1234!' } | ConvertTo-Json
+$body = @{ correo = 'administrador@incapacidades.local'; password = 'LA_CONTRASEÑA_GENERADA' } | ConvertTo-Json
 Invoke-RestMethod -Method POST -Uri 'http://localhost:4000/api/auth/login' -ContentType 'application/json' -Body $body -UseBasicParsing
 ```
 
@@ -340,8 +361,6 @@ Todas las rutas requieren autenticación y el permiso indicado.
 | GET | `/api/documentos/:id` | `DOCUMENTOS_VER` |
 | POST | `/api/documentos/incapacidad/:incapacidadId` | `DOCUMENTOS_SUBIR` |
 | GET | `/api/documentos/:id/descargar` | `DOCUMENTOS_DESCARGAR` |
-| GET | `/api/entidades` | `ENTIDADES_VER` |
-| GET | `/api/entidades/:id` | `ENTIDADES_VER` |
 
 Ejemplo de alta:
 
@@ -463,7 +482,9 @@ Tecnologías: React 19, Vite 7, React Router 7, Axios, Bootstrap 5 y Recharts. N
 - `src/pages`: dashboard con gráficas Recharts y pantallas de empleados, incapacidades, radicaciones, documentos, historial, cobros, pagos, conciliaciones, alertas, reportes, auditoría, usuarios, roles/permisos y 404.
 - `src/utils`: formato de moneda/fechas, constantes y construcción de query params.
 
-Rutas principales: `/login`, `/dashboard`, `/empleados`, `/incapacidades`, `/radicaciones`, `/documentos`, `/historial`, `/cobros`, `/pagos`, `/conciliaciones`, `/alertas`, `/reportes`, `/auditoria`, `/usuarios`, `/roles-permisos` y `*`.
+Rutas principales: `/login`, `/dashboard`, `/empleados`, `/entidades`, `/incapacidades`, `/radicaciones`, `/documentos`, `/historial`, `/cobros`, `/pagos`, `/conciliaciones`, `/alertas`, `/reportes`, `/auditoria`, `/usuarios`, `/roles-permisos` y `*`.
+
+`src/utils/listados.js` recorre las páginas de la API para que los selectores muestren todos los registros, sin enviar `limite` valores superiores al máximo de 100.
 
 El frontend no guarda tokens en `localStorage`/`sessionStorage`; usa la cookie `httpOnly` de la API. El proxy de Vite solo existe para desarrollo; en producción el servidor web debe publicar `frontend/dist` y redirigir `/api` al backend.
 
@@ -475,9 +496,21 @@ Ejecutar desde `backend/`:
 npm test
 ```
 
-La suite usa `node:test` y `fetch` contra el servidor en `http://localhost:4000` con la base de datos disponible. Cubre health, login, RBAC, validación Zod, listados paginados de todas las etapas, reportes CSV con BOM, rechazo de archivos con firma falsificada, regla cobro-radicación, límite de pago por saldo y utilidades de dinero/CSV.
+La suite usa `node:test` y `fetch`. Las credenciales ya no están escritas en el código: se configuran por entorno y las pruebas que escriben solo se habilitan de forma explícita en una base aislada.
 
-Resultado verificado: **16 pruebas, 16 aprobadas, 0 fallidas** (no requiere http-server ni supertest).
+```powershell
+$env:API_URL = 'http://localhost:4001'
+$env:API_ADMIN_CORREO = 'verificador@incapacidades.local'
+$env:API_ADMIN_PASSWORD = 'contraseña_del_administrador_de_pruebas'
+$env:API_CONSULTA_CORREO = 'consulta@verificacion.local'      # opcional, para RBAC
+$env:API_CONSULTA_PASSWORD = 'contraseña_de_lectura'
+$env:PRUEBAS_ESCRITURA = '1'                                 # solo en BD aislada
+npm test
+```
+
+Cubre health, login, RBAC, validación Zod, listados paginados, reportes CSV con BOM, rechazo de archivos con firma falsificada, regla cobro-radicación, límite de pago por saldo, CRUD manual de entidades y utilidades de dinero/CSV. Las pruebas dependientes de datos se omiten con un mensaje cuando la base está vacía.
+
+Resultado verificado en la base aislada: **17 pruebas, 14 aprobadas, 0 fallidas, 3 omitidas por base vacía**. Con datos operativos, las tres omitidas también pasan. No requiere http-server ni supertest.
 
 Medidas de seguridad verificadas:
 
@@ -488,7 +521,7 @@ Medidas de seguridad verificadas:
 - Zod valida params, query y body; errores 5xx no exponen stack al cliente.
 - Documentos con MIME permitido, límite de tamaño, nombre UUID, validación de firma real PDF/JPG/PNG, prevención de path traversal y descarga autorizada.
 - Prisma usa consultas parametrizadas; no hay SQL crudo construido con entrada del usuario.
-- Sin secretos reales versionados: `.env` está ignorado y los datos demo son ficticios.
+- Sin secretos reales versionados: `.env` está ignorado, no hay contraseñas demo en el código ni en el frontend, y las cuentas de prueba quedaron desactivadas sin borrar su historial.
 
 ## Respuestas de la API
 
